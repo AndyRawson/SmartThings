@@ -1,11 +1,11 @@
 /*
- *  Spark Device
+ *  Spark Device Connect
  *
  *  
  *
 */
 definition(
-    name: "Spark Device",
+    name: "Spark Device Connect",
     namespace: "RH Workshop",
     author: "Andy Rawson",
     description: "Allows the Spark to control virtual devices in SmartThings",
@@ -97,7 +97,7 @@ def page3() {
 	dynamicPage(name: "page3") {
 		section {
             checkToken() 
-            state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/digitalPin?access_token=${state.accessToken}"
+            state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/digitalpin?access_token=${state.accessToken}"
             log.debug "Spark Webhooks URL: ${state.appURL}"
 			paragraph "Spark Webhooks URL: ${state.appURL}"
             input "phone", "phone", title: "Phone Number to text the URL to", required: false
@@ -120,14 +120,9 @@ def sendTXT() {
 
 mappings {
 
-    path("/digitalPin") {
+    path("/digitalpin") {
         action: [
             GET: "setDeviceState"
-        ]
-    }
-    path("/analogPin/:pin/:value") {
-        action: [
-            GET: "setDeviceValue"
         ]
     }
 }
