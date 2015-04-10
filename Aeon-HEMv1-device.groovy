@@ -93,9 +93,9 @@ metadata {
         command "reset"
         command "configure"
         
-// v1       fingerprint deviceId: "0x2101", inClusters: " 0x70,0x31,0x72,0x86,0x32,0x80,0x85,0x60"
+       fingerprint deviceId: "0x2101", inClusters: "0x70,0x31,0x72,0x86,0x32,0x80,0x85,0x60" //V1
 
-        fingerprint deviceId: "0x3101", inClusters: "0x70,0x32,0x60,0x85,0x56,0x72,0x86"
+//       fingerprint deviceId: "0x3101", inClusters: "0x70,0x32,0x60,0x85,0x56,0x72,0x86" //V2
     }
 
     // simulator metadata
@@ -112,10 +112,8 @@ metadata {
     }
 
     // tile definitions
-    tiles {
-    
+    tiles { 
     // Watts row
-
         valueTile("powerDisp", "device.powerDisp") {
             state (
                 "default", 
@@ -146,26 +144,27 @@ metadata {
                 ]
             )
         }
+        
         valueTile("powerOne", "device.powerOne", decoration: "flat") {
-            state("default", label:'${currentValue}')
+            state "default", label:'${currentValue}'
         }
         valueTile("powerTwo", "device.powerTwo", decoration: "flat") {
-            state("default", label:'${currentValue}')
+            state "default", label:'${currentValue}'
         }
 
     // Power row
     
         valueTile("energyDisp", "device.energyDisp") {
-            state("default", label: '${currentValue}', backgroundColor:"#ffffff")
+            state "default", label: '${currentValue}', backgroundColor:"#ffffff"
         }
         valueTile("energyOne", "device.energyOne") {
-            state("default", label: '${currentValue}', backgroundColor:"#ffffff")
+            state "default", label: '${currentValue}', backgroundColor:"#ffffff"
         }        
         valueTile("energyTwo", "device.energyTwo") {
-            state("default", label: '${currentValue}', backgroundColor:"#ffffff")
+            state "default", label: '${currentValue}', backgroundColor:"#ffffff"
         }
         
-    
+    /*
     // Volts row
     
         valueTile("voltsDisp", "device.voltsDisp") {
@@ -203,6 +202,7 @@ metadata {
         valueTile("ampsTwo", "device.ampsTwo", decoration: "flat") {
             state "default", label:'${currentValue}'
         }
+        */
     
     // Controls row
     
@@ -219,10 +219,8 @@ metadata {
             state "battery", label:'${currentValue}% battery', unit:""
         }
 
-
-// TODO: Add configurable delay button - Cycle through 10s, 30s, 1m, 5m, 60m, off?
-
-        main (["powerDisp","energyDisp","ampsDisp","voltsDisp"])
+        main (["powerDisp","energyDisp","battery", "energyTwo", "refresh"])
+        
         details([
             "energyOne","energyDisp","energyTwo",
             "powerOne","powerDisp","powerTwo",
