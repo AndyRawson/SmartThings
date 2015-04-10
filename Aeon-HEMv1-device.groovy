@@ -219,7 +219,7 @@ metadata {
             state "battery", label:'${currentValue}% battery', unit:""
         }
 
-        main (["powerDisp","energyDisp","battery", "energyTwo", "refresh"])
+        main (["powerDisp","energyDisp","energyTwo"])
         
         details([
             "energyOne","energyDisp","energyTwo",
