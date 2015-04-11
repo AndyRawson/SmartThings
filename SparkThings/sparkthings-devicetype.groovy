@@ -1,7 +1,9 @@
 /**
  *  Spark Device Status
  *
- *  Copyright 2014 Nicholas Wilde
+ * 
+ * 
+ *  based on code by Copyright 2014 Nicholas Wilde
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -88,7 +90,7 @@ private getReading() {
     httpGet("https://api.spark.io/v1/devices/${deviceId}/${sparkVar}?access_token=${token}", readingClosure)
 }
 
-// Check the Spark status
+// Check the Spark status on the polling schedule so not realtime unless refreshed
 private checkStatus() {
 	//Spark Core API Call
     def readingClosure = { response ->
