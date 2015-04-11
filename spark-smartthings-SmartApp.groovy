@@ -97,10 +97,11 @@ def page3() {
 	dynamicPage(name: "page3") {
 		section {
             checkToken() 
-            state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/digitalpin?access_token=${state.accessToken}"
-            log.debug "Spark Webhooks URL: ${state.appURL}"
-			paragraph "Spark Webhooks URL: ${state.appURL}"
-            input "phone", "phone", title: "Phone Number to text the URL to", required: false
+            state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/stdata/{{pin}}/{{data}}?access_token=${state.accessToken}"
+            //log.debug "Spark Webhooks URL: ${state.appURL}"
+			//paragraph "Spark Webhooks URL: ${state.appURL}"
+            //input "phone", "phone", title: "Phone Number to text the URL to", required: false
+            input "sparkToken", "text", title: "Your Spark access token from the Spark Build IDE in settings", required: true
 		}
 	}
 }
@@ -120,7 +121,7 @@ def sendTXT() {
 
 mappings {
 
-    path("/digitalpin") {
+    path("/stdata/:pin/:data") {
         action: [
             GET: "setDeviceState"
         ]
@@ -130,16 +131,50 @@ mappings {
 def installed() {
 	log.debug "Installed with settings: ${settings}"
     sendTXT()
+    checkWebhook()
+    
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 	unsubscribe()
     sendTXT()
+    checkWebhook()    
+}
+
+void checkWebhook() {
+	int foundHook = 0
+	httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${sparkToken}",
+    ) {response -> response.data.each { 
+    		hook ->
+				//log.debug hook.event
+                if (hook.event == "hook") {
+                	foundHook = 1
+                	log.debug "Found existing webhook id: ${hook.id}"
+                    log.debug "You may need to manually delete the existing webhook with the id: ${hook.id} and the event name: hook"
+                }
+           }
+    if (!foundHook) {
+    	createWebhook()
+    }
+ }
+        
+}
+
+void createWebhook() {
+	log.debug "Creating a Spark webhook "
+             
+      httpPost(uri: "https://api.spark.io/v1/webhooks",
+      			body: [access_token: sparkToken, 
+        		event: "hook",
+                url: state.appURL, 
+                requestType: "GET", 
+                mydevices: true]
+      			) {response -> log.debug (response.data)}
 }
 
 void setDeviceState() {
-	log.debug "Got webhook - Pin: ${params.pin} State: ${params.state}"
+	log.debug "Got webhook - pin: ${params.pin} data: ${params.data}"
 	switch(params.pin) {
         case "D0":
         	changeDeviceState(sensorD0, sensorTypeD0)
@@ -171,66 +206,66 @@ void setDeviceState() {
 }
 
 void changeDeviceState(device, sensorType) {
-log.debug "Pin: ${params.pin} State: ${params.state}"
+log.debug "Pin: ${params.pin} State: ${params.data}"
 	switch(sensorType) {
     	case "alarm":
-        	if (params.state) {device.both()}
+        	if (params.data) {device.both()}
             	else {device.off()}
         	break
         case "accelerationSensor":
-        	if (params.state == "on") {device.active()}
-            	else if (params.state == "off") {device.inactive()}
+        	if (params.data == "on") {device.active()}
+            	else if (params.data == "off") {device.inactive()}
         	break
         case "button":
-        	if (params.state) {device.push()}
+        	if (params.data) {device.push()}
             	else {device.off()}
         	break
         case "carbonMonoxideSensor":
-        	if (params.state) {device.detected()}
+        	if (params.data) {device.detected()}
             	else {device.clear()}
         	break
         case "contactSensor":
-        	if (params.state) {device.open()}
+        	if (params.data) {device.open()}
             	else {device.closed()}
         	break
         case "doorControl":
-        	if (params.state) {device.open()}
+        	if (params.data) {device.open()}
             	else {device.closed()}
         	break
         case "lock":
-        	if (params.state) {device.locked()}
+        	if (params.data) {device.locked()}
             	else {device.unlocked()}
         	break
         case "momentary":
         	break
         case "motionSensor":
-        	if (params.state == "on") {device.active()}
-            	else if (params.state == "off") {device.inactive()}
+        	if (params.data == "on") {device.active()}
+            	else if (params.data == "off") {device.inactive()}
         	break
         case "presenceSensor":
-        	if (params.state) {device.arrived()}
+        	if (params.data) {device.arrived()}
             	else {device.departed()}
         	break
         case "relaySwitch":
-        	if (params.state) {device.on()}
+        	if (params.data) {device.on()}
             	else {device.off()}
         	break
         case "switch":
-        	if (params.state) {device.on()}
+        	if (params.data) {device.on()}
             	else {device.off()}
         	break
         case "sleepSensor":
         	break
         case "smokeDetector":
-        	if (params.state) {device.detected()}
+        	if (params.data) {device.detected()}
             	else {device.clear()}
         	break
         case "valve":
-        	if (params.state) {device.open()}
+        	if (params.data) {device.open()}
             	else {device.closed()}
         	break
         case "waterSensor":
-        	if (params.state) {device.wet()}
+        	if (params.data) {device.wet()}
             	else {device.dry()}
         	break
        
