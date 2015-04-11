@@ -44,8 +44,8 @@ stActuator actuator1 {"switch2",  D3,   1,        1,       0,      0};
 const int sensorCount = 3; // ** change this to the number of sensors you have configured below
 //                  name        pin   polling  type     data   timer
 stSensor sensor0 {"rssi",       100,    300,    3,      0,      0}; // rssi is the current WiFi signal strength for the Spark
-stSensor sensor1 {"motion1",    D0,     300,    1,      0,      0};
-stSensor sensor2 {"contact1",   D1,     300,    2,      0,      0};
+stSensor sensor1 {"motion1",    D0,      60,    1,      0,      0};
+stSensor sensor2 {"contact1",   D1,     2,      2,      0,      0};
 //stSensor sensor3 {"contact2",   D2,     300,    2,      0,      0};
 //stSensor sensor4 {"contact3",   D3,     300,    2,      0,      0};
 //stSensor sensor5 {"contact4",   D4,     300,    2,      0,      0};
@@ -97,7 +97,7 @@ void setup() {
   Spark.function("setToggle", setToggle);
   
   // catch any response from SmartThings for the webhook
-  Spark.subscribe("hook-response/hook", gotResponse, MY_DEVICES);
+  Spark.subscribe("hook-response/stdatahook", gotResponse, MY_DEVICES);
   
   Serial.begin(9600);
 }
@@ -107,7 +107,7 @@ void checkSensors() {
             sensor1.timer -= loopDelay;
         if (sensor1.timer < 0) {
             sensor1.data = 0;
-            Spark.publish("hook", "{ \"pin\": \"D0\", \"data\": \"off\" }", 60, PRIVATE);
+            Spark.publish("stdatahook", "{ \"pin\": \"D0\", \"data\": \"off\" }", 60, PRIVATE);
             //Spark.publish("device0_Off");
             //Spark.publish("motion1off", "0", 60, PRIVATE); IFTTT
             Serial.print("Motion Stopped on Device0_ Sensor");
@@ -117,7 +117,7 @@ void checkSensors() {
     else {
         if (sensor1.timer > 0) {
             sensor1.data = 1;
-            Spark.publish("hook", "{ \"pin\": \"D0\", \"data\": \"on\" }", 60, PRIVATE);
+            Spark.publish("stdatahook", "{ \"pin\": \"D0\", \"data\": \"on\" }", 60, PRIVATE);
             //Spark.publish("device0_On");
             //Spark.publish("motion1on", "1", 60, PRIVATE); //IFTTT
             Serial.print("Motion Detected on Device0_ Sensor");
