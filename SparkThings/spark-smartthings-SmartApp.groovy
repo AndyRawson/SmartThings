@@ -1,14 +1,14 @@
 /*
- *  Spark Device Connect
+ *  SparkThings
  *
  *  
  *
 */
 definition(
-    name: "Spark Device Connect",
+    name: "SparkThings",
     namespace: "RH Workshop",
     author: "Andy Rawson",
-    description: "Allows the Spark to control virtual devices in SmartThings",
+    description: "Allows a Spark.io device to be used with SmartThings",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
@@ -99,8 +99,6 @@ def page3() {
             checkToken() 
             state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/stdata/{{pin}}/{{data}}?access_token=${state.accessToken}"
             //log.debug "Spark Webhooks URL: ${state.appURL}"
-			//paragraph "Spark Webhooks URL: ${state.appURL}"
-            //input "phone", "phone", title: "Phone Number to text the URL to", required: false
             input "sparkToken", "text", title: "Your Spark access token from the Spark Build IDE in settings", required: true
 		}
 	}
@@ -109,13 +107,6 @@ def page3() {
 def checkToken() {
 	if (!state.accessToken) {
     	createAccessToken() 
-    }
-}
-
-def sendTXT() {
-    if (phone) {
-        log.debug "Sending Webhooks URL by SMS: ${state.appURL}"
-        sendSms(phone, state.appURL)
     }
 }
 
@@ -130,7 +121,6 @@ mappings {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-    sendTXT()
     checkWebhook()
     
 }
@@ -138,8 +128,26 @@ def installed() {
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 	unsubscribe()
-    sendTXT()
     checkWebhook()    
+}
+
+def uninstalled() {
+  log.debug "Uninstalling SparkThings"
+  deleteWebhook()
+}
+
+void deleteWebhook() {
+httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${sparkToken}",
+    ) {response -> response.data.each { 
+    		hook ->
+				//log.debug hook.event
+                if (hook.event == "stdatahook") {
+                	httpDelete(uri:"https://api.spark.io/v1/webhooks/${hook.id}?access_token=${sparkToken}")
+                    log.debug "Deleted the existing webhook with the id: ${hook.id} and the event name: stdatahook"
+                }
+           }
+
+ }
 }
 
 void checkWebhook() {
@@ -148,14 +156,17 @@ void checkWebhook() {
     ) {response -> response.data.each { 
     		hook ->
 				//log.debug hook.event
-                if (hook.event == "hook") {
+                if (hook.event == "stdatahook") {
                 	foundHook = 1
                 	log.debug "Found existing webhook id: ${hook.id}"
-                    log.debug "You may need to manually delete the existing webhook with the id: ${hook.id} and the event name: hook"
+                    
                 }
            }
     if (!foundHook) {
     	createWebhook()
+    }
+    else {
+    deleteWebhook()
     }
  }
         
@@ -166,7 +177,7 @@ void createWebhook() {
              
       httpPost(uri: "https://api.spark.io/v1/webhooks",
       			body: [access_token: sparkToken, 
-        		event: "hook",
+        		event: "stdatahook",
                 url: state.appURL, 
                 requestType: "GET", 
                 mydevices: true]
