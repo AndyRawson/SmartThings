@@ -41,7 +41,8 @@ const int led2 = D7; // LED to the side of the USB jack
 stSensor sensors[sensorCount];
 stActuator actuators[actuatorCount];
 
-//Spark function def
+
+
 int setOn(String command);
 int setOff(String command);
 int setValue(String command);
@@ -84,7 +85,7 @@ void checkSensors() {
             actuator0.timer -= loopDelay;
         if (actuator0.timer < 0) {
             actuator0.state = 0;
-            Spark.publish("hook", "{ \"pin\": \"D0\", \"state\": \"off\" }", 60, PRIVATE);
+            Spark.publish("hook", "{ \"pin\": \"D0\", \"data\": \"off\" }", 60, PRIVATE);
             //Spark.publish("device0_Off");
             //Spark.publish("motion1off", "0", 60, PRIVATE); IFTTT
             Serial.print("Motion Stopped on Device0_ Sensor");
@@ -94,7 +95,7 @@ void checkSensors() {
     else {
         if (actuator0.timer > 0) {
             actuator0.state = 1;
-            Spark.publish("hook", "{ \"pin\": \"D0\", \"state\": \"on\" }", 60, PRIVATE);
+            Spark.publish("hook", "{ \"pin\": \"D0\", \"data\": \"on\" }", 60, PRIVATE);
             //Spark.publish("device0_On");
             //Spark.publish("motion1on", "1", 60, PRIVATE); //IFTTT
             Serial.print("Motion Detected on Device0_ Sensor");
