@@ -67,14 +67,14 @@ def parse(String description) {
 // handle commands
 def poll() {
 	log.debug "Executing 'poll'"
-	getReading()
-	checkStatus()
+    
+	checkSpark()
 }
 
 def refresh() {
 	log.debug "Executing 'refresh'"
-    getReading()
-    checkStatus()
+    
+	checkSpark()
 }
 
 // Get the sensor reading
@@ -90,12 +90,26 @@ private getReading() {
 
 // Check the Spark status on the polling schedule so not realtime unless refreshed
 private checkStatus() {
+	int stat = 0
 	//Spark Core API Call
-    def readingClosure = { response ->
-	  	log.debug "Spark status check was successful, $response.data.connected"
-      	sendEvent(name: "switch", value: response.data.connected ? "on" : "off")
+    def readingClosure = { response -> response.data.each { core ->
+    	if (core.id == deviceId) {
+		  	log.debug "Spark status check was successful, $core.connected"
+	      	sendEvent(name: "switch", value: core.connected ? "on" : "off")
+            stat = core.connected ? 1 : 0
+            }
+        }
 	}
 
-    httpGet("https://api.spark.io/v1/devices/${deviceId}?access_token=${token}", readingClosure)	
+    httpGet("https://api.spark.io/v1/devices?access_token=${token}", readingClosure)
+    stat
 }
 	
+def checkSpark() {
+    if (checkStatus()) {
+		getReading()
+	}
+        else {
+    sendEvent(name: "rssi", value: "-200")
+    }
+}
