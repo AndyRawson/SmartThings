@@ -6,7 +6,7 @@
 */
 definition(
     name: "SparkThings",
-    namespace: "RH Workshop",
+    namespace: "rhworkshop",
     author: "Andy Rawson",
     description: "Allows a Spark.io device to be used with SmartThings",
     category: "My Apps",
@@ -122,7 +122,7 @@ mappings {
 def installed() {
 	log.debug "Installed with settings: ${settings}"
     checkWebhook()
-    
+    //createSparkDevice()
 }
 
 def updated() {
@@ -168,8 +168,7 @@ void checkWebhook() {
     else {
     deleteWebhook()
     }
- }
-        
+ }        
 }
 
 void createWebhook() {
@@ -182,6 +181,10 @@ void createWebhook() {
                 requestType: "GET", 
                 mydevices: true]
       			) {response -> log.debug (response.data)}
+}
+
+void createSparkDevice() {
+	def sparkDevice = addChildDevice("rhworkshop", "Spark Device Status", ddni(vt), null, [name:vt, label:label, completedSetup: true])
 }
 
 void setDeviceState() {
