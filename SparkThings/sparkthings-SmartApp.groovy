@@ -51,7 +51,8 @@ preferences {
     }
 
     page(name: "page2", title: "Select devices", nextPage: "page3", install: false, uninstall: false)
-	page(name: "page3", title: "Webhooks URL", install: true, uninstall: false)
+	page(name: "page3", title: "Webhooks URL", nextPage: "page4", install: false, uninstall: false)
+    page(name: "page4", title: "Select Spark Device", install: true, uninstall: false)
 }
 
 def page2() {
@@ -137,6 +138,27 @@ def page3() {
 	}
 }
 
+def page4() {
+	dynamicPage(name: "page4") {
+        section("Spark Device to use"){
+        	def sparkDevices = getDevices()
+            input(name: "sparkDevice", type: "enum", title: "Select the spark Device", required: true, multiple: false, options: sparkDevices)
+        }
+	}
+}
+
+def getDevices() {
+	def sparkDevices = [:]
+	//Spark Core API Call
+    def readingClosure = { response -> response.data.each { core ->
+    		sparkDevices.put(core.id, core.name)  
+        }
+	}
+
+    httpGet("https://api.spark.io/v1/devices?access_token=${sparkToken}", readingClosure)
+ 	return sparkDevices
+}
+
 def checkToken() {
 	if (!state.accessToken) {
     	createAccessToken() 
@@ -156,17 +178,39 @@ def installed() {
 	log.debug "Installed with settings: ${settings}"
     checkWebhook()
     //createSparkDevice()
+    subscribe(sensorA0, "switch.on", switchOnHandler)
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 	unsubscribe()
-    checkWebhook()    
+    checkWebhook()
+    subscribe(sensorA0, "switch.on", switchOnHandler)
+    subscribe(sensorA0, "switch.off", switchOffHandler)
+    subscribe(sensorA0, "switch.setLevel", switchValueHandler)
 }
 
 def uninstalled() {
   log.debug "Uninstalling SparkThings"
   deleteWebhook()
+}
+
+def switchOnHandler(evt) {
+    log.debug "switch turned on!"
+    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setOn?access_token=${sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+
+}
+
+def switchOffHandler(evt) {
+    log.debug "switch turned off!"
+    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setOff?access_token=${sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+
+}
+
+def switchValueHandler(evt) {
+    log.debug "switch dimmed to ${evt.value}!"
+    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setValue?access_token=${sparkToken}","command=switch1:${evt.value}",) {response -> log.debug (response.data)}
+
 }
 
 void deleteWebhook() {
