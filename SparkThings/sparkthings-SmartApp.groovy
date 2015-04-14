@@ -17,9 +17,7 @@ definition(
 
 preferences {
     page(name: "page1", title: "Select sensor types", nextPage: "page2", uninstall: true) {
-        section {
-        
-        def opt = ["none":"Not used",
+            def opt = ["none":"Not used",
                 "alarm":"Alarm",
                 "accelerationSensor":"Acceleration Sensor",
                 "button":"Button",
@@ -32,20 +30,22 @@ preferences {
                 "presenceSensor":"Presence Sensor",
                 "relaySwitch":"Relay Switch",
                 "switch": "Switch",
+                "switchLevel": "Switch Level",
                 "sleepSensor":"Sleep Sensor",
                 "smokeDetector":"Smoke Detector",
                 "valve":"Valve",
                 "waterSensor": "Water Sensor"
                 ]
-        
-            input("sensorTypeD0", title: "Select sensor type for Pin D0", "enum", defaultValue: "none", options: opt)
-            input("sensorTypeD1", title: "Select sensor type for Pin D1", "enum", defaultValue: "none", options: opt)
-            input("sensorTypeD2", title: "Select sensor type for Pin D2", "enum", defaultValue: "none", options: opt)
-            input("sensorTypeD3", title: "Select sensor type for Pin D3", "enum", defaultValue: "none", options: opt)
-            input("sensorTypeD4", title: "Select sensor type for Pin D4", "enum", defaultValue: "none", options: opt)
-            input("sensorTypeD5", title: "Select sensor type for Pin D5", "enum", defaultValue: "none", options: opt)
-            input("sensorTypeD6", title: "Select sensor type for Pin D6", "enum", defaultValue: "none", options: opt)
-            input("sensorTypeD7", title: "Select sensor type for Pin D7", "enum", defaultValue: "none", options: opt)
+        section("Digital Pins") {
+        	for ( i in 0..7 ) {
+            	input("sensorTypeD${i}", title: "Select sensor type for Pin D${i}", "enum", defaultValue: "none", options: opt)
+            }
+
+        }
+        section("Analog Pins") {        
+        	for ( i in 0..7 ) {
+            	input("sensorTypeA${i}", title: "Select sensor type for Pin A${i}", "enum", defaultValue: "none", options: opt)
+            }
             
         }
     }
@@ -56,7 +56,7 @@ preferences {
 
 def page2() {
     dynamicPage(name: "page2") {
-        section {      
+        section("Digital Pin Devices"){
         if (sensorTypeD0 != "none"){
             input(name: "sensorD0", type: "capability.$sensorTypeD0", title: "Select the $sensorTypeD0 device for Pin D0", required: false, multiple: false)
             }
@@ -88,8 +88,41 @@ def page2() {
         if (sensorTypeD7 != "none"){
             input(name: "sensorD7", type: "capability.$sensorTypeD7", title: "Select the $sensorTypeD7 device for Pin D7", required: false, multiple: false)
             }
-
 		}
+        section("Analog Pin Devices"){
+        if (sensorTypeA0 != "none"){
+            input(name: "sensorA0", type: "capability.$sensorTypeA0", title: "Select the $sensorTypeA0 device for Pin A0", required: false, multiple: false)
+            }
+            
+        if (sensorTypeA1 != "none"){
+            input(name: "sensorA1", type: "capability.$sensorTypeA1", title: "Select the $sensorTypeA1 device for Pin A1", required: false, multiple: false)
+            }
+        
+        if (sensorTypeA2 != "none"){
+            input(name: "sensorA2", type: "capability.$sensorTypeA2", title: "Select the $sensorTypeA2 device for Pin A2", required: false, multiple: false)
+            }
+            
+        if (sensorTypeA3 != "none"){
+            input(name: "sensorA3", type: "capability.$sensorTypeA3", title: "Select the $sensorTypeA3 device for Pin A3", required: false, multiple: false)
+            }
+            
+        if (sensorTypeA4 != "none"){
+            input(name: "sensorA4", type: "capability.$sensorTypeA4", title: "Select the $sensorTypeA4 device for Pin A4", required: false, multiple: false)
+            }
+
+        if (sensorTypeA5 != "none"){
+            input(name: "sensorA5", type: "capability.$sensorTypeA5", title: "Select the $sensorTypeA5 device for Pin A5", required: false, multiple: false)
+            }
+            
+        if (sensorTypeA6 != "none"){
+            input(name: "sensorA6", type: "capability.$sensorTypeA6", title: "Select the $sensorTypeA6 device for Pin A6", required: false, multiple: false)
+            }
+            
+        if (sensorTypeA7 != "none"){
+            input(name: "sensorA7", type: "capability.$sensorTypeA7", title: "Select the $sensorTypeA7 device for Pin A7", required: false, multiple: false)
+            }
+		}
+        
     }
 }
 
@@ -189,6 +222,7 @@ void createSparkDevice() {
 
 void setDeviceState() {
 	log.debug "Got webhook - pin: ${params.pin} data: ${params.data}"
+
 	switch(params.pin) {
         case "D0":
         	changeDeviceState(sensorD0, sensorTypeD0)
@@ -217,6 +251,7 @@ void setDeviceState() {
         default:
             break
     }
+   
 }
 
 void changeDeviceState(device, sensorType) {
