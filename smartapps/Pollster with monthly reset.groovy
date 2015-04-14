@@ -68,6 +68,9 @@ preferences {
             input "refresh_4", "capability.refresh", title:"Select devices to be reset", multiple:true, required:false
             input "interval_4", "number", title:"Set polling day of the month", defaultValue:22
     }
+    section("Phone number to send Power report to:") {
+    	input "phone", "phone", title:"Phone Number", required:false
+    }
 }
 
 def installed() {
@@ -77,6 +80,7 @@ def installed() {
 def updated() {
     unschedule()
     initialize()
+
 }
 
 def onAppTouch(event) {
@@ -141,10 +145,19 @@ def pollingTask4() {
     if (settings.group_4) {
         settings.group_4*.poll()
     }
-
+	
+	
     if (settings.refresh_4) {
+		powerReport()
         settings.refresh_4*.reset()
     }
+}
+
+def powerReport() {
+    	refresh_4.findAll {
+    	def msg = "Power Report for ${it.displayName}: ${it.currentValue("energyTwo")}, kWh Used: ${it.currentValue("energyDisp")}"
+        sendTXT(msg)
+        }
 }
 
 private def initialize() {
@@ -190,4 +203,11 @@ private def textCopyright() {
 
 private def TRACE(message) {
     //log.trace message
+}
+
+def sendTXT(txtMessage) {
+    if (phone) {   	
+        log.debug txtMessage
+        sendSms(phone, txtMessage)
+    }
 }
