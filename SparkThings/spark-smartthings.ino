@@ -1,14 +1,14 @@
 typedef struct {
-  char name[12]; //name of the Actuator
+  String name; //name of the Actuator
   int pin; // the pin on the Spark that the device is connected to
   int timeout; // 
-  int type; // 1 = Switch, 2 = Alarm, 3 = other
+  int type; // 1 = Switch, 2 = Alarm, 3 = Dimmer, 4 = Other
   int state; // the state the device is in
-  volatile int timer; //timer for motions and debouncing things volatile since it could be used in an interrupt
+  int value; //timer for motions and debouncing things volatile since it could be used in an interrupt
 } stActuator; // SmartThings Actuator device
 
 typedef struct {
-  char name[12]; //name of the Sensor - limit of 12 char for Spark Variable Names
+  String name; //name of the Sensor - limit of 12 char for Spark Variable Names
   int pin; // the pin on the Spark that the device is connected to
   int polling; // how often to update the web variables in seconds
   int type; // 1 = Motion, 2 = door/window contact, 3 = rssi, 4 = other
@@ -19,9 +19,10 @@ typedef struct {
 // --------------------------------------------------------------------------------------
 const int actuatorCount =2; // ** change this to the number of actuators you have configured
 //** change the following to suit what you have connected
+// PWM analogWrite() is available on pins A0, A1, A4, A5, A6, A7, D0 and D1
 // Actuator Types 1 = Switch, 2 = Alarm, 3 = other
-//                      name     pin   timeout  type     state   timer
-stActuator actuator0 {"switch1",  D2,   1,        1,       0,      0}; 
+//                      name     pin   timeout  type     state   value
+stActuator actuator0 {"switch1",  A0,   1,        3,       0,      0}; 
 stActuator actuator1 {"switch2",  D3,   1,        1,       0,      0}; 
 //stActuator actuator2 {"switch3",  D2,   1,        1,       0,      0};
 //stActuator actuator3 {"switch4",  D3,   1,        1,       0,      0};
@@ -80,15 +81,17 @@ void setup() {
   pinMode(sensor2.pin, INPUT_PULLDOWN);
   attachInterrupt(sensor2.pin, D1_Inter, RISING);
   
-  pinMode(actuator0.pin, INPUT_PULLDOWN);
-  attachInterrupt(actuator0.pin, D2_Inter, CHANGE);
+  pinMode(actuator0.pin, OUTPUT);
   
   pinMode(led2, OUTPUT);
   
   // setup the spark variables for SmartThings to Poll
-  Spark.variable(sensor0.name, &sensor0.data, INT);
-  Spark.variable(sensor1.name, &sensor1.data, INT);
-  Spark.variable(sensor2.name, &sensor2.data, INT);
+  const char * s0Name = sensor0.name.c_str();
+  const char * s1Name = sensor1.name.c_str();
+  const char * s2Name = sensor2.name.c_str();
+  Spark.variable(s0Name, &sensor0.data, INT);
+  Spark.variable(s1Name, &sensor1.data, INT);
+  Spark.variable(s2Name, &sensor2.data, INT);
   
   // setup the spark functions for commands from SmartThings
   Spark.function("setOn", setOn);
@@ -138,6 +141,7 @@ void loop() {
   updateVariables(); // TODO move this to checkSensors as a Sensor type
   
   delay(loopDelay); // Wait for 1 second 
+  
 
 }
 
@@ -157,23 +161,97 @@ void gotResponse(const char *name, const char *data) {
     Serial.print(data);
 }
 
+// setOn takes deviceName       // Example: switch1
 int setOn(String command) {
-    digitalWrite(led2, HIGH);
-    Serial.println("Switch On");
-    return 1;    
-}
-
-int setOff(String command) {
-    digitalWrite(led2, LOW);
-    Serial.println("Switch Off");
-    return 1;    
-}
-
-int setValue(String command) {
+    int r = 0;
+    Serial.print("Function setOn: ");
+    Serial.println(command);
     
+    for (int i = 0; i < arraySize(actuators); i++) {
+        if (actuators[i].name.equals(command)) {
+            Serial.print("Changing Device: ");
+            Serial.print(command);
+            Serial.println(" to On");
+            actuators[i].state = 1;
+            digitalWrite(actuators[i].pin, HIGH);
+            r = 1;
+        }
+    }
+    return r;   
 }
 
+// setOff takes deviceName       // Example: switch1
+int setOff(String command) {
+    int r = 0;
+    Serial.print("Function setOff: ");
+    Serial.println(command);
+    
+    for (int i = 0; i < arraySize(actuators); i++) {
+        if (actuators[i].name.equals(command)) {
+            Serial.print("Changing Device: ");
+            Serial.print(command);
+            Serial.println(" to Off");
+            actuators[i].state = 0;
+            digitalWrite(actuators[i].pin, LOW);
+            r = 1;
+        }
+    }
+    return r;   
+}
+
+// setValue takes deviceName:value   // Example: switch1:10
+int setValue(String command) {
+    int r = 0;
+    char copyStr[64];
+    command.toCharArray(copyStr,64);
+    char *p = strtok(copyStr, ":");
+    
+    char *deviceToSet = p; //(uint8_t)atoi(p);
+    p = strtok(NULL,":");
+    String valueToSet = p; //(uint8_t)atoi(p);
+    
+    Serial.println(command);
+    
+    for (int i = 0; i < arraySize(actuators); i++) {
+        if (actuators[i].name.equals(String(deviceToSet))) {
+            Serial.print("Changing Device: ");
+            Serial.print(deviceToSet);
+            Serial.print(" Value: ");
+            Serial.println(valueToSet);
+            actuators[i].value = valueToSet.toInt();
+            actuators[i].state = 1;
+            analogWrite(actuators[i].pin, actuators[i].value);
+            r = 1;
+        }
+    }
+    return r;
+}
+
+// setToggle takes deviceName       // Example: switch1
 int setToggle(String command) {
+    int r = 0;
+    Serial.print("Function setToggle: ");
+    Serial.println(command);
+    
+    for (int i = 0; i < arraySize(actuators); i++) {
+        if (actuators[i].name.equals(command)) {
+            Serial.print("Changing Device: ");
+            Serial.print(command);
+            if (actuators[i].state) {
+                Serial.println(" to Off");
+                actuators[i].state = 0;
+                digitalWrite(actuators[i].pin, LOW);
+            }
+            else {
+                Serial.println(" to On");
+                actuators[i].state = 1;
+                digitalWrite(actuators[i].pin, HIGH);
+            }
+
+            r = 1;
+        }
+    }
+    return r;       
     
 }
 
