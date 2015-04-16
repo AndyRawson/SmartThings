@@ -36,6 +36,10 @@ preferences {
                 "valve":"Valve",
                 "waterSensor": "Water Sensor"
                 ]
+        section("Generate Username and Password") {
+        	input "sparkUsername", "text", title: "Your Spark.io Username", required: true
+            input "sparkPassword", "password", title: "Your Spark.io Password", required: true
+        }
         section("Digital Pins") {
         	for ( i in 0..7 ) {
             	input("sensorTypeD${i}", title: "Select sensor type for Pin D${i}", "enum", defaultValue: "none", options: opt)
@@ -51,12 +55,25 @@ preferences {
     }
 
     page(name: "page2", title: "Select devices", nextPage: "page3", install: false, uninstall: false)
-	page(name: "page3", title: "Webhooks URL", nextPage: "page4", install: false, uninstall: false)
-    page(name: "page4", title: "Select Spark Device", install: true, uninstall: false)
+	page(name: "page3", title: "Webhooks URL", install: true, uninstall: false)
 }
 
 def page2() {
     dynamicPage(name: "page2") {
+    
+   if (!state.sparkToken){
+        httpPost(uri: "https://spark:spark@api.spark.io/oauth/token",
+		body: [grant_type: "password", 
+        username: sparkUsername,
+        password: sparkPassword,
+        expires_in: "157680000"] 
+      		) {response -> state.sparkToken = response.data.access_token
+               	}
+        log.debug "Did it work? ${state.sparkToken}"
+        checkToken() 
+
+    }
+    
         section("Digital Pin Devices"){
         if (sensorTypeD0 != "none"){
             input(name: "sensorD0", type: "capability.$sensorTypeD0", title: "Select the $sensorTypeD0 device for Pin D0", required: false, multiple: false)
@@ -129,23 +146,17 @@ def page2() {
 
 def page3() {
 	dynamicPage(name: "page3") {
-		section {
-            checkToken() 
-            state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/stdata/{{pin}}/{{data}}?access_token=${state.accessToken}"
-            //log.debug "Spark Webhooks URL: ${state.appURL}"
-            input "sparkToken", "text", title: "Your Spark access token from the Spark Build IDE in settings", required: true
-		}
-	}
-}
-
-def page4() {
-	dynamicPage(name: "page4") {
-        section("Spark Device to use"){
-        	def sparkDevices = getDevices()
-            input(name: "sparkDevice", type: "enum", title: "Select the spark Device", required: true, multiple: false, options: sparkDevices)
+       	section("Spark Device to use"){
+   			def sparkDevices = getDevices()
+   	    	input(name: "sparkDevice", type: "enum", title: "Select the spark Device", required: true, multiple: false, options: sparkDevices)
+       	}
+        section {
+            label title: "Assign a name", required: false
+            
         }
 	}
 }
+
 
 def getDevices() {
 	def sparkDevices = [:]
@@ -155,7 +166,7 @@ def getDevices() {
         }
 	}
 
-    httpGet("https://api.spark.io/v1/devices?access_token=${sparkToken}", readingClosure)
+    httpGet("https://api.spark.io/v1/devices?access_token=${state.sparkToken}", readingClosure)
  	return sparkDevices
 }
 
@@ -167,7 +178,7 @@ def checkToken() {
 
 mappings {
 
-    path("/stdata/:pin/:data") {
+    path("/stdata/:webhookName/:pin/:data") {
         action: [
             GET: "setDeviceState"
         ]
@@ -175,14 +186,15 @@ mappings {
 }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
-    checkWebhook()
+	state.webhookName = "dev${sparkDevice[-6..-1]}"
+    state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/stdata/${state.webhookName}/{{pin}}/{{data}}?access_token=${state.accessToken}"
+	//log.debug "Installed with settings: ${settings}"
+    //checkWebhook()
     //createSparkDevice()
-    subscribe(sensorA0, "switch.on", switchOnHandler)
 }
 
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	//log.debug "Updated with settings: ${settings}"
 	unsubscribe()
     checkWebhook()
     subscribe(sensorA0, "switch.on", switchOnHandler)
@@ -193,47 +205,57 @@ def updated() {
 def uninstalled() {
   log.debug "Uninstalling SparkThings"
   deleteWebhook()
+  deleteAccessToken()
 }
 
 def switchOnHandler(evt) {
     log.debug "switch turned on!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOn?access_token=${sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setOn?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
 
 }
 
 def switchOffHandler(evt) {
     log.debug "switch turned off!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOff?access_token=${sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setOff?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
 
 }
 
 def switchValueHandler(evt) {
     log.debug "switch dimmed to ${evt.value}!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setValue?access_token=${sparkToken}","command=switch1:${evt.value}",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setValue?access_token=${state.sparkToken}","command=switch1:${evt.value}",) {response -> log.debug (response.data)}
 
 }
 
 void deleteWebhook() {
-httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${sparkToken}",
+try{
+httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${state.sparkToken}",
     ) {response -> response.data.each { 
     		hook ->
 				//log.debug hook.event
-                if (hook.event == "stdatahook") {
-                	httpDelete(uri:"https://api.spark.io/v1/webhooks/${hook.id}?access_token=${sparkToken}")
-                    log.debug "Deleted the existing webhook with the id: ${hook.id} and the event name: stdatahook"
+                if (hook.event == state.webhookName) {
+                	httpDelete(uri:"https://api.spark.io/v1/webhooks/${hook.id}?access_token=${state.sparkToken}")
+                    log.debug "Deleted the existing webhook with the id: ${hook.id} and the event name: ${state.webhookName}"
                 }
            }
 
  }
+ } catch (all) {log.debug "Couldn't delete webhook, moving on"}
+}
+
+void deleteAccessToken() {
+//try{
+	httpDelete(uri:"https://${sparkUsername}:${sparkPassword}@api.spark.io/v1/access_tokens/${state.sparkToken}")
+	log.debug "Deleted the existing Spark Access Token"
+ //} catch (all) {log.debug "Couldn't delete Spark Token, moving on"}
 }
 
 void checkWebhook() {
 	int foundHook = 0
-	httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${sparkToken}",
+	httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${state.sparkToken}",
     ) {response -> response.data.each { 
     		hook ->
 				//log.debug hook.event
-                if (hook.event == "stdatahook") {
+                if (hook.event == state.webhookName) {
                 	foundHook = 1
                 	log.debug "Found existing webhook id: ${hook.id}"
                     
@@ -243,7 +265,7 @@ void checkWebhook() {
     	createWebhook()
     }
     else {
-    deleteWebhook()
+
     }
  }        
 }
@@ -252,8 +274,8 @@ void createWebhook() {
 	log.debug "Creating a Spark webhook "
              
       httpPost(uri: "https://api.spark.io/v1/webhooks",
-      			body: [access_token: sparkToken, 
-        		event: "stdatahook",
+      			body: [access_token: state.sparkToken, 
+        		event: state.webhookName,
                 url: state.appURL, 
                 requestType: "GET", 
                 mydevices: true]
@@ -261,7 +283,7 @@ void createWebhook() {
 }
 
 void createSparkDevice() {
-//	def sparkDevice = addChildDevice("rhworkshop", "Spark Device Status", ddni(vt), null, [name:vt, label:label, completedSetup: true])
+	//def sparkDevice = addChildDevice("rhworkshop", "Spark Device Status", ddni(vt), null, [name:vt, label:label, completedSetup: true])
 }
 
 void setDeviceState() {
