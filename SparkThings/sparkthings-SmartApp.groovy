@@ -210,19 +210,19 @@ def uninstalled() {
 
 def switchOnHandler(evt) {
     log.debug "switch turned on!"
-    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setOn?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOn?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
 
 }
 
 def switchOffHandler(evt) {
     log.debug "switch turned off!"
-    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setOff?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOff?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
 
 }
 
 def switchValueHandler(evt) {
     log.debug "switch dimmed to ${evt.value}!"
-    httpPost("https://api.spark.io/v1/devices/55ff6e066678505531361367/setValue?access_token=${state.sparkToken}","command=switch1:${evt.value}",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setValue?access_token=${state.sparkToken}","command=switch1:${evt.value}",) {response -> log.debug (response.data)}
 
 }
 
