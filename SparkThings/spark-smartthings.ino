@@ -17,13 +17,13 @@ typedef struct {
 } stSensor; //SmartThings Sensor device
 
 // --------------------------------------------------------------------------------------
-const int actuatorCount =2; // ** change this to the number of actuators you have configured
 //** change the following to suit what you have connected
 // PWM analogWrite() is available on pins A0, A1, A4, A5, A6, A7, D0 and D1
 // Actuator Types 1 = Switch, 2 = Alarm, 3 = other
 //                      name     pin   timeout  type     state   value
-stActuator actuator0 {"switch1",  A0,   1,        3,       0,      0}; 
-stActuator actuator1 {"switch2",  D3,   1,        1,       0,      0}; 
+stActuator actuator[] = {};
+//stActuator actuator0 {"switch1",  A0,   1,        3,       0,      0}; 
+//stActuator actuator1 {"switch2",  D3,   1,        1,       0,      0}; 
 //stActuator actuator2 {"switch3",  D2,   1,        1,       0,      0};
 //stActuator actuator3 {"switch4",  D3,   1,        1,       0,      0};
 //stActuator actuator4 {"switch5",  D4,   1,        1,       0,      0}; 
@@ -42,25 +42,26 @@ stActuator actuator1 {"switch2",  D3,   1,        1,       0,      0};
 // a no motion trigger until the timer runs out after the last motion. 
 // change the following to suit what you have connected and comment out the rest
 // Sensor Types 1 = Motion, 2 = door/window contact, 3 = rssi, 4 = other
-const int sensorCount = 3; // ** change this to the number of sensors you have configured below
-//                  name        pin   polling  type     data   timer
-stSensor sensor0 {"rssi",       100,    300,    3,      0,      0}; // rssi is the current WiFi signal strength for the Spark
-stSensor sensor1 {"motion1",    D0,      60,    1,      0,      0};
-stSensor sensor2 {"contact1",   D1,     2,      2,      0,      0};
-//stSensor sensor3 {"contact2",   D2,     300,    2,      0,      0};
-//stSensor sensor4 {"contact3",   D3,     300,    2,      0,      0};
-//stSensor sensor5 {"contact4",   D4,     300,    2,      0,      0};
-//stSensor sensor6 {"contact5",   D5,     300,    2,      0,      0};
-//stSensor sensor7 {"contact6",   D6,     300,    2,      0,      0};
-//stSensor sensor8 {"contact7",   A1,     300,    2,      0,      0};
-//stSensor sensor9 {"contact8",   A2,     300,    2,      0,      0};
+//                  name            pin   polling  type     data   timer
+stSensor sensor[] = {
+{"contact1",       D0,      3,       2,     0,      0},
+{"contact2",       D1,      3,       2,     0,      0},
+{"contact3",       D2,      3,       2,      0,      0},
+{"contact4",       D3,      3,       2,      0,      0},
+{"contact5",       D4,      3,       2,      0,      0},
+{"HallMotion",     A0,      300,     1,      0,      0},
+{"BasementMotion", A1,      300,     1,      0,      0},
+{"contact6",       A3,      3,       2,      0,      0},
+{"HallGlassBreak", A4,      300,     4,      0,      0},
+//{"contact8",     A2,      300,     2,      0,      0},
+{"rssi",        100,        300,     3,      0,      0},
+};// rssi is the current WiFi signal strength for the Spark
 // --------------------------------------------------------------------------------------
 
 //Other stuff
 const int loopDelay = 1000; //time to wait between loop() runs in ms (1000ms = 1 second)
 const int led2 = D7; // LED to the side of the USB jack
-stSensor sensors[sensorCount];
-stActuator actuators[actuatorCount];
+
 String webhookName = "";
 
 int setOn(String command);
@@ -72,30 +73,59 @@ void setup() {
   String devID = Spark.deviceID();
   webhookName = "dev" + devID.substring(18);
 
-  actuators[0] = actuator0;
-  actuators[1] = actuator1;
   
-  sensors[0] = sensor0;
-  sensors[1] = sensor0;
-  sensors[2] = sensor0;
+  pinMode(sensor[0].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[0].pin, D0_Inter, CHANGE);
   
-  pinMode(sensor1.pin, INPUT_PULLDOWN);
-  attachInterrupt(sensor1.pin, D0_Inter, RISING);
+  pinMode(sensor[1].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[1].pin, D1_Inter, CHANGE);
   
-  pinMode(sensor2.pin, INPUT_PULLDOWN);
-  attachInterrupt(sensor2.pin, D1_Inter, RISING);
+  pinMode(sensor[2].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[2].pin, D2_Inter, CHANGE);
   
-  pinMode(actuator0.pin, OUTPUT);
+  pinMode(sensor[3].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[3].pin, D3_Inter, CHANGE);
+  
+  pinMode(sensor[4].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[4].pin, D4_Inter, CHANGE);
+  
+  pinMode(sensor[5].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[5].pin, A0_Inter, CHANGE);
+  
+  pinMode(sensor[6].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[6].pin, A1_Inter, CHANGE);
+  
+  pinMode(sensor[7].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[7].pin, A3_Inter, CHANGE);
+  
+  pinMode(sensor[8].pin, INPUT_PULLUP);
+  attachInterrupt(sensor[8].pin, A4_Inter, CHANGE);
+  
+  //pinMode(actuator0.pin, OUTPUT);
   
   pinMode(led2, OUTPUT);
   
   // setup the spark variables for SmartThings to Poll
-  const char * s0Name = sensor0.name.c_str();
-  const char * s1Name = sensor1.name.c_str();
-  const char * s2Name = sensor2.name.c_str();
-  Spark.variable(s0Name, &sensor0.data, INT);
-  Spark.variable(s1Name, &sensor1.data, INT);
-  Spark.variable(s2Name, &sensor2.data, INT);
+  const char * s100Name = sensor[9].name.c_str();
+  const char * s0Name = sensor[0].name.c_str();
+  const char * s1Name = sensor[1].name.c_str();
+  const char * s2Name = sensor[2].name.c_str();
+  const char * s3Name = sensor[3].name.c_str();
+  const char * s4Name = sensor[4].name.c_str();
+  const char * s5Name = sensor[5].name.c_str();
+  const char * s6Name = sensor[6].name.c_str();
+  const char * s7Name = sensor[7].name.c_str();
+  const char * s8Name = sensor[8].name.c_str();
+  Spark.variable(s100Name, &sensor[9].data, INT);
+  Spark.variable(s0Name, &sensor[0].data, INT);
+  Spark.variable(s1Name, &sensor[1].data, INT);
+  Spark.variable(s2Name, &sensor[2].data, INT);
+  Spark.variable(s3Name, &sensor[3].data, INT);
+  Spark.variable(s4Name, &sensor[4].data, INT);
+  Spark.variable(s5Name, &sensor[5].data, INT);
+  Spark.variable(s6Name, &sensor[6].data, INT);
+  Spark.variable(s7Name, &sensor[7].data, INT);
+  Spark.variable(s8Name, &sensor[8].data, INT);
   
   // setup the spark functions for commands from SmartThings
   Spark.function("setOn", setOn);
@@ -111,28 +141,34 @@ void setup() {
 }
 
 void checkSensors() {
-        if (sensor1.data) {
-            sensor1.timer -= loopDelay;
-        if (sensor1.timer < 0) {
-            sensor1.data = 0;
-            Spark.publish(webhookName, "{ \"pin\": \"D0\", \"data\": \"off\" }", 60, PRIVATE);
-            //Spark.publish("device0_Off");
-            //Spark.publish("motion1off", "0", 60, PRIVATE); IFTTT
-            Serial.print("Motion Stopped on Device0_ Sensor");
-            digitalWrite(led2, LOW);
-        }
-    }
-    else {
-        if (sensor1.timer > 0) {
-            sensor1.data = 1;
-            Spark.publish(webhookName, "{ \"pin\": \"D0\", \"data\": \"on\" }", 60, PRIVATE);
-            //Spark.publish("device0_On");
-            //Spark.publish("motion1on", "1", 60, PRIVATE); //IFTTT
-            Serial.print("Motion Detected on Device0_ Sensor");
-            digitalWrite(led2, HIGH);
+    for (int i=0; i < arraySize(sensor); i++) {
+        if (sensor[i].type != 3) {
+        Serial.print(String(sensor[i].timer) + " : ");
+            if (sensor[i].data) {
+                sensor[i].timer -= loopDelay;
+                if (sensor[i].timer < 0) {
+                    sensor[i].data = 0;
+                    Spark.publish(webhookName, "{ \"pin\": \"" + sensor[i].name + "\", \"data\": \"off\" }", 60, PRIVATE);
+                    //Spark.publish("device0_Off");
+                    //Spark.publish("motion1off", "0", 60, PRIVATE); IFTTT
+                    Serial.print("Motion Stopped on " + sensor[i].name);
+                    //digitalWrite(led2, LOW);
+                }
+            }
+            else {
+                if (sensor[i].timer > 0) {
+                    sensor[i].data = 1;
+                    Spark.publish(webhookName, "{ \"pin\": \"" + sensor[i].name + "\", \"data\": \"on\" }", 60, PRIVATE);
+                    //Spark.publish("device0_On");
+                    //Spark.publish("motion1on", "1", 60, PRIVATE); //IFTTT
+                    Serial.print("Motion Detected on " + sensor[i].name);
+                    //digitalWrite(led2, HIGH);
             
+                }
+            }
         }
     }
+    Serial.println("");
 }
 
 
@@ -151,14 +187,14 @@ void loop() {
 }
 
 void updateVariables() {
-    if (sensor0.timer) {
-        sensor0.timer -= loopDelay;  
+    if (sensor[9].timer) {
+        sensor[9].timer -= loopDelay;  
     }
     else {
-        sensor0.timer = sensor0.polling * 1000;
-        sensor0.data = WiFi.RSSI();
+        sensor[9].timer = sensor[9].polling * 1000;
+        sensor[9].data = WiFi.RSSI();
         Serial.print("RSSI: ");
-        Serial.println(sensor0.data);
+        Serial.println(sensor[9].data);
     }
 
 }
@@ -173,13 +209,13 @@ int setOn(String command) {
     Serial.print("Function setOn: ");
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuators); i++) {
-        if (actuators[i].name.equals(command)) {
+    for (int i = 0; i < arraySize(actuator); i++) {
+        if (actuator[i].name.equals(command)) {
             Serial.print("Changing Device: ");
             Serial.print(command);
             Serial.println(" to On");
-            actuators[i].state = 1;
-            digitalWrite(actuators[i].pin, HIGH);
+            actuator[i].state = 1;
+            digitalWrite(actuator[i].pin, HIGH);
             r = 1;
         }
     }
@@ -192,13 +228,13 @@ int setOff(String command) {
     Serial.print("Function setOff: ");
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuators); i++) {
-        if (actuators[i].name.equals(command)) {
+    for (int i = 0; i < arraySize(actuator); i++) {
+        if (actuator[i].name.equals(command)) {
             Serial.print("Changing Device: ");
             Serial.print(command);
             Serial.println(" to Off");
-            actuators[i].state = 0;
-            digitalWrite(actuators[i].pin, LOW);
+            actuator[i].state = 0;
+            digitalWrite(actuator[i].pin, LOW);
             r = 1;
         }
     }
@@ -218,15 +254,15 @@ int setValue(String command) {
     
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuators); i++) {
-        if (actuators[i].name.equals(String(deviceToSet))) {
+    for (int i = 0; i < arraySize(actuator); i++) {
+        if (actuator[i].name.equals(String(deviceToSet))) {
             Serial.print("Changing Device: ");
             Serial.print(deviceToSet);
             Serial.print(" Value: ");
             Serial.println(valueToSet);
-            actuators[i].value = valueToSet.toInt();
-            actuators[i].state = 1;
-            analogWrite(actuators[i].pin, actuators[i].value);
+            actuator[i].value = valueToSet.toInt();
+            actuator[i].state = 1;
+            analogWrite(actuator[i].pin, actuator[i].value);
             r = 1;
         }
     }
@@ -239,19 +275,19 @@ int setToggle(String command) {
     Serial.print("Function setToggle: ");
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuators); i++) {
-        if (actuators[i].name.equals(command)) {
+    for (int i = 0; i < arraySize(actuator); i++) {
+        if (actuator[i].name.equals(command)) {
             Serial.print("Changing Device: ");
             Serial.print(command);
-            if (actuators[i].state) {
+            if (actuator[i].state) {
                 Serial.println(" to Off");
-                actuators[i].state = 0;
-                digitalWrite(actuators[i].pin, LOW);
+                actuator[i].state = 0;
+                digitalWrite(actuator[i].pin, LOW);
             }
             else {
                 Serial.println(" to On");
-                actuators[i].state = 1;
-                digitalWrite(actuators[i].pin, HIGH);
+                actuator[i].state = 1;
+                digitalWrite(actuator[i].pin, HIGH);
             }
 
             r = 1;
@@ -265,14 +301,38 @@ int setToggle(String command) {
 // Interrupts
 void D0_Inter()
 {
-   sensor1.timer = sensor1.polling * 1000; 
+   sensor[0].timer = sensor[0].polling * 1000; 
 }
 
 void D1_Inter()
 {
-   sensor2.timer = sensor2.polling * 1000; 
+   sensor[1].timer = sensor[1].polling * 1000; 
 }
 void D2_Inter()
 {
-
+   sensor[2].timer = sensor[2].polling * 1000; 
+}
+void D3_Inter()
+{
+   sensor[3].timer = sensor[3].polling * 1000; 
+}
+void D4_Inter()
+{
+   sensor[4].timer = sensor[4].polling * 1000; 
+}
+void A0_Inter()
+{
+   sensor[5].timer = sensor[5].polling * 1000; 
+}
+void A1_Inter()
+{
+   sensor[6].timer = sensor[6].polling * 1000; 
+}
+void A3_Inter()
+{
+   sensor[7].timer = sensor[7].polling * 1000; 
+}
+void A4_Inter()
+{
+   sensor[8].timer = sensor[8].polling * 1000; 
 }
