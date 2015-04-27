@@ -290,31 +290,55 @@ void setDeviceState() {
 	log.debug "Got webhook - pin: ${params.pin} data: ${params.data}"
 
 	switch(params.pin) {
-        case "D0":
+        case "contact1":
         	changeDeviceState(sensorD0, sensorTypeD0)
             break
-        case "D1":
+        case "contact2":
         	changeDeviceState(sensorD1, sensorTypeD1)
             break
-        case "D2":
+        case "contact3":
         	changeDeviceState(sensorD2, sensorTypeD2)
             break
-        case "D3":
+        case "contact4":
         	changeDeviceState(sensorD3, sensorTypeD3)
             break
-        case "D4":
+        case "contact5":
         	changeDeviceState(sensorD4, sensorTypeD4)
             break
-        case "D5":
+        case "contact6":
         	changeDeviceState(sensorD5, sensorTypeD5)
             break
-        case "D6":
+        case "contact7":
         	changeDeviceState(sensorD6, sensorTypeD6)
             break
-        case "D7":
+        case "contact8":
         	changeDeviceState(sensorD7, sensorTypeD7)
             break
-        default:
+        case "HallMotion":
+        	changeDeviceState(sensorA0, sensorTypeA0)
+            break
+        case "BasementMotion":
+        	changeDeviceState(sensorA1, sensorTypeA1)
+            break
+        case "contact9":
+        	changeDeviceState(sensorA2, sensorTypeA2)
+            break
+        case "contact10":
+        	changeDeviceState(sensorA3, sensorTypeA3)
+            break
+        case "contact11":
+        	changeDeviceState(sensorA4, sensorTypeA4)
+            break          
+        case "contact12":
+        	changeDeviceState(sensorA5, sensorTypeA5)
+            break
+        case "contact13":
+        	changeDeviceState(sensorA6, sensorTypeA6)
+            break            
+        case "contact14":
+        	changeDeviceState(sensorA7, sensorTypeA7)
+            break    
+		default:
             break
     }
    
