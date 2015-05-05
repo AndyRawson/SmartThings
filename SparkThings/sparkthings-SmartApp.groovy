@@ -17,50 +17,71 @@ definition(
 
 preferences {
     page(name: "page1", title: "Select sensor types", nextPage: "page2", uninstall: true) {
-            def opt = ["none":"Not used",
-                "alarm":"Alarm",
-                "accelerationSensor":"Acceleration Sensor",
-                "button":"Button",
-                "carbonMonoxideSensor":"Carbon Monoxide Sensor",
-                "contactSensor":"Contact Sensor",
-                "doorControl":"Door Control",
-                "lock": "Lock",
-                "momentary":"Momentary",
-                "motionSensor":"Motion Sensor",
-                "presenceSensor":"Presence Sensor",
-                "relaySwitch":"Relay Switch",
-                "switch": "Switch",
-                "switchLevel": "Switch Level",
-                "sleepSensor":"Sleep Sensor",
-                "smokeDetector":"Smoke Detector",
-                "valve":"Valve",
-                "waterSensor": "Water Sensor"
-                ]
+    
+            def opt = [
+            	[
+					title : "Pin not used",
+					order : 0, // the order of the group; 0-based
+					image : null, // not yet supported
+					values:[[key:"none",value:"Not used"]]
+                ],
+				[
+					title : "Sensor or Actuator (could be either one)",
+					order : 3, // the order of the group; 0-based
+					image : null,
+					values: [[key:"alarm",value:"Alarm"], [key:"doorControl",value:"Door Control"], [key:"lock",value:"Lock"], 
+                    	[key:"relaySwitch",value:"Relay Switch"],[key:"switch",value:"Switch"], 
+                        [key:"switchLevel",value:"Switch Level"], [key:"valve",value:"Valve"]
+					]
+				],
+				[
+					title : "Sensor only (return information)",
+					order : 2, // the order of the group; 0-based
+					image : null,
+					values: [[key:"accelerationSensor",value:"Acceleration Sensor"], [key:"button",value:"Button"], 
+						[key:"carbonMonoxideSensor",value:"Carbon Monoxide Sensor"], [key:"contactSensor",value:"Contact Sensor"], 
+                        [key:"motionSensor",value:"Motion Sensor"], [key:"presenceSensor",value:"Presence Sensor"], [key:"sleepSensor",value:"Sleep Sensor"], 
+                        [key:"smokeDetector",value:"Smoke Detector"], [key:"waterSensor",value:"Water Sensor"]
+					]
+				],
+				[
+					title : "Actuator only (do something)",
+					order : 1, // the order of the group; 0-based
+					image : null, // not yet supported
+					values: [[key:"momentary",value:"Momentary"],[key:"tone",value:"Tone"]
+					]
+				]
+			]
+    
         section("Generate Username and Password") {
         	input "sparkUsername", "text", title: "Your Spark.io Username", required: true
             input "sparkPassword", "password", title: "Your Spark.io Password", required: true
         }
-        section("Digital Pins") {
+        section("Digital Pins (* can send instant status)") {
         	for ( i in 0..7 ) {
-            	input("sensorTypeD${i}", title: "Select sensor type for Pin D${i}", "enum", defaultValue: "none", options: opt)
+            	String isInterrupt = (i in [0,1,2,3,4]) ? " *" : ""
+            	input("sensorTypeD${i}", title: "Select sensor type for Pin D${i}${isInterrupt}", "enum", defaultValue: "none", multiple: false, groupedOptions: opt)
             }
 
         }
-        section("Analog Pins") {        
+        section("Analog Pins (* can send instant status)") {        
         	for ( i in 0..7 ) {
-            	input("sensorTypeA${i}", title: "Select sensor type for Pin A${i}", "enum", defaultValue: "none", options: opt)
+            	String isInterrupt = (i in [0,1,3,4,5,6,7]) ? " *" : ""
+            	input("sensorTypeA${i}", title: "Select sensor type for Pin A${i}${isInterrupt}", "enum", defaultValue: "none", multiple: false, groupedOptions: opt)
             }
             
         }
     }
 
     page(name: "page2", title: "Select devices", nextPage: "page3", install: false, uninstall: false)
-	page(name: "page3", title: "Webhooks URL", install: true, uninstall: false)
+    page(name: "page3", title: "Sensor Settings", nextPage: "page4", install: false, uninstall: false)
+	page(name: "page4", title: "Spark Device", install: true, uninstall: false)
+    
 }
 
 def page2() {
     dynamicPage(name: "page2") {
-    
+   
    if (!state.sparkToken){
         httpPost(uri: "https://spark:spark@api.spark.io/oauth/token",
 		body: [grant_type: "password", 
@@ -69,83 +90,82 @@ def page2() {
         expires_in: "157680000"] 
       		) {response -> state.sparkToken = response.data.access_token
                	}
-        log.debug "Did it work? ${state.sparkToken}"
+        log.debug "Created new Spark.io token"        
+        //log.debug "Spark Token ${state.sparkToken}"
         checkToken() 
 
     }
     
-        section("Digital Pin Devices"){
-        if (sensorTypeD0 != "none"){
-            input(name: "sensorD0", type: "capability.$sensorTypeD0", title: "Select the $sensorTypeD0 device for Pin D0", required: false, multiple: false)
-            }
-            
-        if (sensorTypeD1 != "none"){
-            input(name: "sensorD1", type: "capability.$sensorTypeD1", title: "Select the $sensorTypeD1 device for Pin D1", required: false, multiple: false)
-            }
-        
-        if (sensorTypeD2 != "none"){
-            input(name: "sensorD2", type: "capability.$sensorTypeD2", title: "Select the $sensorTypeD2 device for Pin D2", required: false, multiple: false)
-            }
-            
-        if (sensorTypeD3 != "none"){
-            input(name: "sensorD3", type: "capability.$sensorTypeD3", title: "Select the $sensorTypeD3 device for Pin D3", required: false, multiple: false)
-            }
-            
-        if (sensorTypeD4 != "none"){
-            input(name: "sensorD4", type: "capability.$sensorTypeD4", title: "Select the $sensorTypeD4 device for Pin D4", required: false, multiple: false)
-            }
 
-        if (sensorTypeD5 != "none"){
-            input(name: "sensorD5", type: "capability.$sensorTypeD5", title: "Select the $sensorTypeD5 device for Pin D5", required: false, multiple: false)
-            }
-            
-        if (sensorTypeD6 != "none"){
-            input(name: "sensorD6", type: "capability.$sensorTypeD6", title: "Select the $sensorTypeD6 device for Pin D6", required: false, multiple: false)
-            }
-            
-        if (sensorTypeD7 != "none"){
-            input(name: "sensorD7", type: "capability.$sensorTypeD7", title: "Select the $sensorTypeD7 device for Pin D7", required: false, multiple: false)
-            }
-		}
-        section("Analog Pin Devices"){
-        if (sensorTypeA0 != "none"){
-            input(name: "sensorA0", type: "capability.$sensorTypeA0", title: "Select the $sensorTypeA0 device for Pin A0", required: false, multiple: false)
-            }
-            
-        if (sensorTypeA1 != "none"){
-            input(name: "sensorA1", type: "capability.$sensorTypeA1", title: "Select the $sensorTypeA1 device for Pin A1", required: false, multiple: false)
-            }
-        
-        if (sensorTypeA2 != "none"){
-            input(name: "sensorA2", type: "capability.$sensorTypeA2", title: "Select the $sensorTypeA2 device for Pin A2", required: false, multiple: false)
-            }
-            
-        if (sensorTypeA3 != "none"){
-            input(name: "sensorA3", type: "capability.$sensorTypeA3", title: "Select the $sensorTypeA3 device for Pin A3", required: false, multiple: false)
-            }
-            
-        if (sensorTypeA4 != "none"){
-            input(name: "sensorA4", type: "capability.$sensorTypeA4", title: "Select the $sensorTypeA4 device for Pin A4", required: false, multiple: false)
-            }
+    	def sensorTypesD = settings.findAll { it.key.startsWith("sensorTypeD") }
+        sensorTypesD.eachWithIndex { sType, i -> 
+			if (sType.value != "none"){
+        		section("Pin D${i}"){
+            		input(name: "sensorD${i}", type: "capability.${sType.value}", title: "Select the ${sType.value} device", required: true, multiple: false)
+                	input(name: "actuatorD${i}", type: "bool", title: "On for Actuator, Off for Sensor", defaultValue: false)
+            	}
+        	}
 
-        if (sensorTypeA5 != "none"){
-            input(name: "sensorA5", type: "capability.$sensorTypeA5", title: "Select the $sensorTypeA5 device for Pin A5", required: false, multiple: false)
-            }
-            
-        if (sensorTypeA6 != "none"){
-            input(name: "sensorA6", type: "capability.$sensorTypeA6", title: "Select the $sensorTypeA6 device for Pin A6", required: false, multiple: false)
-            }
-            
-        if (sensorTypeA7 != "none"){
-            input(name: "sensorA7", type: "capability.$sensorTypeA7", title: "Select the $sensorTypeA7 device for Pin A7", required: false, multiple: false)
-            }
 		}
+        
+        def sensorTypesA = settings.findAll { it.key.startsWith("sensorTypeA") }
+        sensorTypesA.eachWithIndex { sType, i -> 
+			if (sType.value != "none"){
+        		section("Pin A${i}"){
+            		input(name: "sensorA${i}", type: "capability.${sType.value}", title: "Select the ${sType.value} device", required: true, multiple: false)
+                    input(name: "actuatorA${i}", type: "bool", title: "On for Actuator, Off for Sensor", defaultValue: false)
+            	}
+        	}
+		}
+
+
         
     }
 }
 
 def page3() {
 	dynamicPage(name: "page3") {
+    	def sensorTypesD = settings.findAll { it.key.startsWith("sensorTypeD") }
+        sensorTypesD.eachWithIndex { pConfig, i -> 
+			if (settings["actuatorD${i}"]) {log.debug "sensorD${i} is an Actuator"}
+            else {
+            	if (settings["sensorD${i}"]) {
+        		section("Sensor Type Pin D${i} settings"){
+                    if (i in [0,1,2,3,4]) {
+                		input(name: "instantD${i}", type: "bool", title: "Off for Polling, On for Instant update", defaultValue: true)
+                	}
+                	else {
+                		paragraph "Polling only on this Pin"
+                	}
+                    input(name: "resetD${i}", type: "number", title: "Sensor reset delay (in seconds, limits fast on/off reporting on motion sensors, etc.)", defaultValue: 300)
+            	}
+                }
+        	}
+		}
+        
+        def sensorTypesA = settings.findAll { it.key.startsWith("sensorTypeA") }
+        sensorTypesA.eachWithIndex { pConfig, i -> 
+			if (settings["actuatorA${i}"]) {log.debug "sensorA${i} is an Actuator"}
+            else {
+            	if (settings["sensorA${i}"]) {
+        		section("Sensor Type Pin A${i} settings"){
+                    if (i in [0,1,3,4,5,6,7]) {
+                		input(name: "instantA${i}", type: "bool", title: "Off for Polling, On for Instant update", defaultValue: true)
+                	}
+                	else {
+                		paragraph "Polling only on this Pin"
+                	}
+                    input(name: "resetA${i}", type: "number", title: "Sensor reset delay (in seconds, limits fast on/off reporting on motion sensors, etc.)", defaultValue: 300)
+            	}
+                }
+        	}
+		}
+        
+    }
+}
+
+def page4() {
+	dynamicPage(name: "page4") {
        	section("Spark Device to use"){
    			def sparkDevices = getDevices()
    	    	input(name: "sparkDevice", type: "enum", title: "Select the spark Device", required: true, multiple: false, options: sparkDevices)
@@ -189,23 +209,70 @@ def installed() {
 	state.webhookName = "dev${sparkDevice[-6..-1]}"
     state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/stdata/${state.webhookName}/{{pin}}/{{data}}?access_token=${state.accessToken}"
 	//log.debug "Installed with settings: ${settings}"
-    //checkWebhook()
+    checkWebhook()
     //createSparkDevice()
+    
 }
 
 def updated() {
 	//log.debug "Updated with settings: ${settings}"
 	unsubscribe()
     checkWebhook()
-    subscribe(sensorA0, "switch.on", switchOnHandler)
-    subscribe(sensorA0, "switch.off", switchOffHandler)
-    subscribe(sensorA0, "switch.setLevel", switchValueHandler)
+    setupSensors()
 }
 
 def uninstalled() {
   log.debug "Uninstalling SparkThings"
   deleteWebhook()
   deleteAccessToken()
+}
+
+def setupSensors() {
+	String configString = ""
+    def sensorTypesD = settings.findAll { it.key.startsWith("sensorTypeD") }
+    sensorTypesD.eachWithIndex { sType, i -> 
+    	if (sType.value == "none"){
+        	configString += "1,0,0,"
+        }
+        else {
+        	if (settings["resetD${i}"]) {
+	        	configString += settings["resetD${i}"].value
+                configString += ","
+            }
+            else {
+            	configString += "1,"
+            }
+            configString += sensorTypeLookup(sType) + ","
+            configString += (settings["instantD${i}"]) ? "1," : "0,"
+        }
+    }
+    def sensorTypesA = settings.findAll { it.key.startsWith("sensorTypeA") }
+    sensorTypesA.eachWithIndex { sType, i -> 
+    	if (sType.value == "none"){
+        	configString += "1,0,0,"
+        }
+        else {
+        	if (settings["resetA${i}"]) {
+	        	configString += settings["resetA${i}"].value
+                configString += ","
+            }
+            else {
+            	configString += "1,"
+            }
+            configString += sensorTypeLookup(sType) + ","
+            configString += (settings["instantA${i}"]) ? "1," : "0,"
+        }
+    }
+    configString = configString[0..-2]
+	state.configString = configString
+	subscribe(sensorA0, "switch.on", switchOnHandler)
+    subscribe(sensorA0, "switch.off", switchOffHandler)
+    subscribe(sensorA0, "switch.setLevel", switchValueHandler)
+}
+
+def sensorTypeLookup(def sType) {
+	log.debug sType
+	return 1
 }
 
 def switchOnHandler(evt) {
@@ -243,10 +310,18 @@ httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${state.sparkToken}",
 }
 
 void deleteAccessToken() {
-//try{
-	httpDelete(uri:"https://${sparkUsername}:${sparkPassword}@api.spark.io/v1/access_tokens/${state.sparkToken}")
+try{
+	def authEncoded = "${sparkUsername}:${sparkPassword}".bytes.encodeBase64()
+	def params = [
+    	uri: "https://api.spark.io/v1/access_tokens/${state.sparkToken}",
+    	headers: [
+        	'Authorization': "Basic ${authEncoded}"
+    	]
+	]
+
+	httpDelete(params) //uri:"https://${sparkUsername}:${sparkPassword}@api.spark.io/v1/access_tokens/${state.sparkToken}")
 	log.debug "Deleted the existing Spark Access Token"
- //} catch (all) {log.debug "Couldn't delete Spark Token, moving on"}
+ } catch (all) {log.debug "Couldn't delete Spark Token, moving on"}
 }
 
 void checkWebhook() {
@@ -286,70 +361,74 @@ void createSparkDevice() {
 	//def sparkDevice = addChildDevice("rhworkshop", "Spark Device Status", ddni(vt), null, [name:vt, label:label, completedSetup: true])
 }
 
-void setDeviceState() {
+def setDeviceState() {
 	log.debug "Got webhook - pin: ${params.pin} data: ${params.data}"
-
+	
 	switch(params.pin) {
-        case "contact1":
+        case "D0":
         	changeDeviceState(sensorD0, sensorTypeD0)
             break
-        case "contact2":
+        case "D1":
         	changeDeviceState(sensorD1, sensorTypeD1)
             break
-        case "contact3":
+        case "D2":
         	changeDeviceState(sensorD2, sensorTypeD2)
             break
-        case "contact4":
+        case "D3":
         	changeDeviceState(sensorD3, sensorTypeD3)
             break
-        case "contact5":
+        case "D4":
         	changeDeviceState(sensorD4, sensorTypeD4)
             break
-        case "contact6":
+        case "D5":
         	changeDeviceState(sensorD5, sensorTypeD5)
             break
-        case "contact7":
+        case "D6":
         	changeDeviceState(sensorD6, sensorTypeD6)
             break
-        case "contact8":
+        case "D7":
         	changeDeviceState(sensorD7, sensorTypeD7)
             break
-        case "HallMotion":
+        case "A0":
         	changeDeviceState(sensorA0, sensorTypeA0)
             break
-        case "BasementMotion":
+        case "A1":
         	changeDeviceState(sensorA1, sensorTypeA1)
             break
-        case "contact9":
+        case "A2":
         	changeDeviceState(sensorA2, sensorTypeA2)
             break
-        case "contact10":
+        case "A3":
         	changeDeviceState(sensorA3, sensorTypeA3)
             break
-        case "contact11":
+        case "A4":
         	changeDeviceState(sensorA4, sensorTypeA4)
             break          
-        case "contact12":
+        case "A5":
         	changeDeviceState(sensorA5, sensorTypeA5)
             break
-        case "contact13":
+        case "A6":
         	changeDeviceState(sensorA6, sensorTypeA6)
             break            
-        case "contact14":
+        case "A7":
         	changeDeviceState(sensorA7, sensorTypeA7)
-            break    
+            break
+        case "config":
+        	return [Respond: state.configString]
+        	break
 		default:
             break
     }
-   
+    
+  //return [Respond: "OK"]
 }
 
 void changeDeviceState(device, sensorType) {
 log.debug "Pin: ${params.pin} State: ${params.data}"
 	switch(sensorType) {
     	case "alarm":
-        	if (params.data) {device.both()}
-            	else {device.off()}
+        
+        	(params.data == "on") ? device.both() : device.off()
         	break
         case "accelerationSensor":
         	if (params.data == "on") {device.active()}
