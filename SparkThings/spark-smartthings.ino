@@ -175,7 +175,7 @@ void setInterrupt(int i) {
 }
 
 void checkSensors() {
-    for (int i=0; i < arraySize(sensor); i++) {
+    for (int i=0; i < arraySize(device); i++) {
         if (device[i].pinType != 3) {
         Serial.print(String(device[i].timer) + " : ");
             if (device[i].data) {
@@ -243,7 +243,7 @@ int setOn(String command) {
     Serial.print("Function setOn: ");
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuator); i++) {
+    for (int i = 0; i < arraySize(device); i++) {
         if (device[i].name.equals(command)) {
             Serial.print("Changing Device: ");
             Serial.print(command);
@@ -262,7 +262,7 @@ int setOff(String command) {
     Serial.print("Function setOff: ");
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuator); i++) {
+    for (int i = 0; i < arraySize(device); i++) {
         if (device[i].name.equals(command)) {
             Serial.print("Changing Device: ");
             Serial.print(command);
@@ -288,7 +288,7 @@ int setValue(String command) {
     
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuator); i++) {
+    for (int i = 0; i < arraySize(device); i++) {
         if (device[i].name.equals(String(deviceToSet))) {
             Serial.print("Changing Device: ");
             Serial.print(deviceToSet);
@@ -309,7 +309,7 @@ int setToggle(String command) {
     Serial.print("Function setToggle: ");
     Serial.println(command);
     
-    for (int i = 0; i < arraySize(actuator); i++) {
+    for (int i = 0; i < arraySize(device); i++) {
         if (device[i].name.equals(command)) {
             Serial.print("Changing Device: ");
             Serial.print(command);
