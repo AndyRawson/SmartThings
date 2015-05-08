@@ -30,6 +30,8 @@ stDevice device[] = {
 };
 
 const int loopDelay = 1000; //time to wait between loop() runs in ms (1000ms = 1 second)
+int triggerReset = 0;
+int configTimer = 30000;
 int configured = 0;
 int configDataAvailable = 0;
 unsigned int configArray[48];
@@ -43,9 +45,10 @@ String webhookName = "";
 int setOn(String command);
 int setOff(String command);
 int setValue(String command);
-int setToggle(String command);
+int config(String command);
 
 void setup() {
+  pinMode(D7, OUTPUT);
   String devID = Spark.deviceID();
   webhookName = "dev" + devID.substring(18);
   
@@ -56,13 +59,14 @@ void setup() {
   // tell SparkThings we need the Config Data
   getConfigData();
   
+  // setup the rssi WiFi signal strength variable
   Spark.variable("rssi", &rssiData, INT);
   
   // setup the spark functions for commands from SmartThings
   Spark.function("setOn", setOn);
   Spark.function("setOff", setOff);
   Spark.function("setValue", setValue);
-  Spark.function("setToggle", setToggle);
+  Spark.function("config", setConfig);
  
   Serial.begin(9600);
 }
@@ -98,6 +102,16 @@ void deviceSetup() {
     }
     else {
         Serial.println("No config data yet");
+        digitalWrite(D7, HIGH);
+        delay(100);
+        digitalWrite(D7, LOW);
+        if (configTimer < 0) {
+            getConfigData();
+            configTimer = 30000;
+        }
+        else {
+            configTimer -= loopDelay;
+        }
     }
 }
 
@@ -219,6 +233,8 @@ void loop() {
         updateRssi(); 
     }
   
+  checkForReset(); // changing the config in SmartThings triggers a reset to get the new config
+  
   delay(loopDelay); // Wait for loopDelay ms 
   
 
@@ -275,7 +291,7 @@ int setOff(String command) {
     return r;   
 }
 
-// setValue takes deviceName:value   // Example: switch1:10
+// setValue takes deviceName:value   // Example: D0:10
 int setValue(String command) {
     int r = 0;
     char copyStr[64];
@@ -303,33 +319,22 @@ int setValue(String command) {
     return r;
 }
 
-// setToggle takes deviceName       // Example: switch1
-int setToggle(String command) {
-    int r = 0;
-    Serial.print("Function setToggle: ");
-    Serial.println(command);
-    
-    for (int i = 0; i < arraySize(device); i++) {
-        if (device[i].name.equals(command)) {
-            Serial.print("Changing Device: ");
-            Serial.print(command);
-            if (device[i].data) {
-                Serial.println(" to Off");
-                device[i].data = 0;
-                digitalWrite(device[i].pin, LOW);
-            }
-            else {
-                Serial.println(" to On");
-                device[i].data = 1;
-                digitalWrite(device[i].pin, HIGH);
-            }
+// setConfig reboots the Spark
+int setConfig(String command) {
 
-            r = 1;
-        }
-    }
-    return r;       
+    Serial.print("Going down for Reboot in 2 Seconds!");
+    triggerReset = 1;
+    return 1;       
     
 }
+
+void checkForReset() {
+    if (triggerReset) {
+        delay(2000);
+        System.reset();
+    }
+}
+
 
 
 // Interrupts
