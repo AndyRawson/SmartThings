@@ -130,7 +130,7 @@ def page3() {
 			if (settings["actuatorD${i}"]) {log.debug "sensorD${i} is an Actuator"}
             else {
             	if (settings["sensorD${i}"]) {
-        		section("Sensor Type Pin D${i} settings"){
+        		section("Sensor Type Pin D${i} settings for ${settings["sensorD${i}"]}"){
                     if (i in [0,1,2,3,4]) {
                 		input(name: "instantD${i}", type: "bool", title: "Off for Polling, On for Instant update", defaultValue: true)
                 	}
@@ -148,7 +148,7 @@ def page3() {
 			if (settings["actuatorA${i}"]) {log.debug "sensorA${i} is an Actuator"}
             else {
             	if (settings["sensorA${i}"]) {
-        		section("Sensor Type Pin A${i} settings"){
+        		section("Sensor Type Pin A${i} settings for ${settings["sensorA${i}"]}"){
                     if (i in [0,1,3,4,5,6,7]) {
                 		input(name: "instantA${i}", type: "bool", title: "Off for Polling, On for Instant update", defaultValue: true)
                 	}
@@ -268,6 +268,7 @@ def setupSensors() {
 	subscribe(sensorA0, "switch.on", switchOnHandler)
     subscribe(sensorA0, "switch.off", switchOffHandler)
     subscribe(sensorA0, "switch.setLevel", switchValueHandler)
+    configSpark()
 }
 
 def sensorTypeLookup(def sType) {
@@ -277,19 +278,19 @@ def sensorTypeLookup(def sType) {
 
 def switchOnHandler(evt) {
     log.debug "switch turned on!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOn?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOn?access_token=${state.sparkToken}","command=D3",) {response -> log.debug (response.data)}
 
 }
 
 def switchOffHandler(evt) {
     log.debug "switch turned off!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOff?access_token=${state.sparkToken}","command=switch1",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOff?access_token=${state.sparkToken}","command=D3",) {response -> log.debug (response.data)}
 
 }
 
 def switchValueHandler(evt) {
     log.debug "switch dimmed to ${evt.value}!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setValue?access_token=${state.sparkToken}","command=switch1:${evt.value}",) {response -> log.debug (response.data)}
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setValue?access_token=${state.sparkToken}","command=D3:${evt.value}",) {response -> log.debug (response.data)}
 
 }
 
@@ -359,6 +360,11 @@ void createWebhook() {
 
 void createSparkDevice() {
 	//def sparkDevice = addChildDevice("rhworkshop", "Spark Device Status", ddni(vt), null, [name:vt, label:label, completedSetup: true])
+}
+
+void configSpark() {
+    log.debug "Updating Spark config, the Spark device will now restart"
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/config?access_token=${state.sparkToken}","",) {response -> log.debug (response.data)}
 }
 
 def setDeviceState() {
@@ -435,55 +441,56 @@ log.debug "Pin: ${params.pin} State: ${params.data}"
             	else if (params.data == "off") {device.inactive()}
         	break
         case "button":
-        	if (params.data) {device.push()}
+        	if (params.data == "on") {device.push()}
             	else {device.off()}
         	break
         case "carbonMonoxideSensor":
-        	if (params.data) {device.detected()}
+        	if (params.data == "on") {device.detected()}
             	else {device.clear()}
         	break
         case "contactSensor":
-        	if (params.data) {device.open()}
-            	else {device.closed()}
+        	if (params.data == "on") {device.open()}
+            	else {device.close()}
         	break
         case "doorControl":
-        	if (params.data) {device.open()}
-            	else {device.closed()}
+        	if (params.data == "on") {device.open()}
+            	else {device.close()}
         	break
         case "lock":
-        	if (params.data) {device.locked()}
-            	else {device.unlocked()}
+        	if (params.data == "on") {device.lock()}
+            	else {device.unlock()}
         	break
         case "momentary":
+            if (params.data == "on") {device.push()}
         	break
         case "motionSensor":
         	if (params.data == "on") {device.active()}
             	else if (params.data == "off") {device.inactive()}
         	break
         case "presenceSensor":
-        	if (params.data) {device.arrived()}
+        	if (params.data == "on") {device.arrived()}
             	else {device.departed()}
         	break
         case "relaySwitch":
-        	if (params.data) {device.on()}
+        	if (params.data == "on") {device.on()}
             	else {device.off()}
         	break
         case "switch":
-        	if (params.data) {device.on()}
+        	if (params.data == "on") {device.on()}
             	else {device.off()}
         	break
         case "sleepSensor":
         	break
         case "smokeDetector":
-        	if (params.data) {device.detected()}
+        	if (params.data == "on") {device.detected()}
             	else {device.clear()}
         	break
         case "valve":
-        	if (params.data) {device.open()}
-            	else {device.closed()}
+        	if (params.data == "on") {device.open()}
+            	else {device.close()}
         	break
         case "waterSensor":
-        	if (params.data) {device.wet()}
+        	if (params.data == "on") {device.wet()}
             	else {device.dry()}
         	break
        
