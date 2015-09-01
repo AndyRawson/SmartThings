@@ -25,8 +25,8 @@ definition(
 
 
 preferences {
-	section("Title") {
-		// TODO: put inputs here
+	section("Select devices to verify") {
+		input "switches", "capability.switch", multiple: true
 	}
 }
 
@@ -44,7 +44,13 @@ def updated() {
 }
 
 def initialize() {
-	// TODO: subscribe to attributes, devices, locations, etc.
+	subscribe(switches, "switch", switchesHandler)
 }
 
-// TODO: implement event handlers
+def switchesHandler(evt) {
+    if (evt.value == "on") {
+        log.debug "switch turned on!"
+    } else if (evt.value == "off") {
+        log.debug "switch turned off!"
+    }
+}
