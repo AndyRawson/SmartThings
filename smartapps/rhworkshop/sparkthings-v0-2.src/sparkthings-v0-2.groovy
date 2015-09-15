@@ -2,7 +2,10 @@
  *  SparkThings V0.2
  *
  *  
- *
+ *  TODO: Page 2 and 3 don't load previous settings when reconfiguring
+ *  TODO: Not all device types are setup and tested yet
+ *  TODO: support the Particle Photon 
+ *  TODO: change all the Spark references to Particle
 */
 definition(
     name: "SparkThings V0.2",
@@ -38,7 +41,7 @@ preferences {
 					title : "Sensor only (return information)",
 					order : 2, // the order of the group; 0-based
 					image : null,
-					values: [[key:"accelerationSensor",value:"Acceleration Sensor"], [key:"button",value:"Button"], 
+					values: [[key:"button",value:"Button"], 
 						[key:"carbonMonoxideSensor",value:"Carbon Monoxide Sensor"], [key:"contactSensor",value:"Contact Sensor"], 
                         [key:"motionSensor",value:"Motion Sensor"], [key:"presenceSensor",value:"Presence Sensor"], [key:"sleepSensor",value:"Sleep Sensor"], 
                         [key:"smokeDetector",value:"Smoke Detector"], [key:"waterSensor",value:"Water Sensor"]
@@ -225,6 +228,7 @@ def uninstalled() {
   log.debug "Uninstalling SparkThings"
   deleteWebhook()
   deleteAccessToken()
+  log.debug "SparkThings Uninstalled"
 }
 
 def setupSensors() {
@@ -432,13 +436,8 @@ def setDeviceState() {
 void changeDeviceState(device, sensorType) {
 log.debug "Pin: ${params.pin} State: ${params.data}"
 	switch(sensorType) {
-    	case "alarm":
-        
+    	case "alarm":     
         	(params.data == "on") ? device.both() : device.off()
-        	break
-        case "accelerationSensor":
-        	if (params.data == "on") {device.active()}
-            	else if (params.data == "off") {device.inactive()}
         	break
         case "button":
         	if (params.data == "on") {device.push()}
