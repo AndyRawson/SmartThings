@@ -11,7 +11,7 @@ definition(
     name: "SparkThings V0.2",
     namespace: "rhworkshop",
     author: "Andy Rawson",
-    description: "Allows a Spark.io device to be used with SmartThings",
+    description: "Allows a Particle.io device to be used with SmartThings",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
@@ -75,7 +75,6 @@ preferences {
             
         }
     }
-
     page(name: "page2", title: "Select devices", nextPage: "page3", install: false, uninstall: false)
     page(name: "page3", title: "Sensor Settings", nextPage: "page4", install: false, uninstall: false)
 	page(name: "page4", title: "Spark Device", install: true, uninstall: false)
@@ -99,7 +98,6 @@ def page2() {
 
     }
     
-
     	def sensorTypesD = settings.findAll { it.key.startsWith("sensorTypeD") }
         sensorTypesD.eachWithIndex { sType, i -> 
 			if (sType.value != "none"){
@@ -180,7 +178,7 @@ def page4() {
 	}
 }
 
-
+// get a list of the spark devices from the account
 def getDevices() {
 	def sparkDevices = [:]
 	//Spark Core API Call
@@ -188,11 +186,11 @@ def getDevices() {
     		sparkDevices.put(core.id, core.name)  
         }
 	}
-
     httpGet("https://api.spark.io/v1/devices?access_token=${state.sparkToken}", readingClosure)
  	return sparkDevices
 }
 
+// hey, is there an accessToken yet?
 def checkToken() {
 	if (!state.accessToken) {
     	createAccessToken() 
@@ -200,7 +198,6 @@ def checkToken() {
 }
 
 mappings {
-
     path("/stdata/:webhookName/:pin/:data") {
         action: [
             GET: "setDeviceState"
@@ -212,9 +209,8 @@ def installed() {
 	state.webhookName = "dev${sparkDevice[-6..-1]}"
     state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/stdata/${state.webhookName}/{{pin}}/{{data}}?access_token=${state.accessToken}"
 	//log.debug "Installed with settings: ${settings}"
-    checkWebhook()
-    //createSparkDevice()
-    
+    checkWebhook() 
+    setupSensors()
 }
 
 def updated() {
@@ -231,146 +227,24 @@ def uninstalled() {
   log.debug "SparkThings Uninstalled"
 }
 
-def setupSensors() {
-	String configString = ""
-    def sensorTypesD = settings.findAll { it.key.startsWith("sensorTypeD") }
-    sensorTypesD.eachWithIndex { sType, i -> 
-    	if (sType.value == "none"){
-        	configString += "1,0,0,"
-        }
-        else {
-        	if (settings["resetD${i}"]) {
-	        	configString += settings["resetD${i}"].value
-                configString += ","
-            }
-            else {
-            	configString += "1,"
-            }
-            configString += sensorTypeLookup(sType) + ","
-            configString += (settings["instantD${i}"]) ? "1," : "0,"
-        }
-    }
-    def sensorTypesA = settings.findAll { it.key.startsWith("sensorTypeA") }
-    sensorTypesA.eachWithIndex { sType, i -> 
-    	if (sType.value == "none"){
-        	configString += "1,0,0,"
-        }
-        else {
-        	if (settings["resetA${i}"]) {
-	        	configString += settings["resetA${i}"].value
-                configString += ","
-            }
-            else {
-            	configString += "1,"
-            }
-            configString += sensorTypeLookup(sType) + ","
-            configString += (settings["instantA${i}"]) ? "1," : "0,"
-        }
-    }
-    configString = configString[0..-2]
-	state.configString = configString
-	subscribe(sensorA0, "switch.on", switchOnHandler)
-    subscribe(sensorA0, "switch.off", switchOffHandler)
-    subscribe(sensorA0, "switch.setLevel", switchValueHandler)
-    configSpark()
-}
 
-def sensorTypeLookup(def sType) {
-	log.debug sType
-	return 1
-}
 
 def switchOnHandler(evt) {
     log.debug "switch turned on!"
     httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOn?access_token=${state.sparkToken}","command=D3",) {response -> log.debug (response.data)}
-
 }
 
 def switchOffHandler(evt) {
     log.debug "switch turned off!"
     httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOff?access_token=${state.sparkToken}","command=D3",) {response -> log.debug (response.data)}
-
 }
 
 def switchValueHandler(evt) {
     log.debug "switch dimmed to ${evt.value}!"
     httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setValue?access_token=${state.sparkToken}","command=D3:${evt.value}",) {response -> log.debug (response.data)}
-
 }
 
-void deleteWebhook() {
-try{
-httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${state.sparkToken}",
-    ) {response -> response.data.each { 
-    		hook ->
-				//log.debug hook.event
-                if (hook.event == state.webhookName) {
-                	httpDelete(uri:"https://api.spark.io/v1/webhooks/${hook.id}?access_token=${state.sparkToken}")
-                    log.debug "Deleted the existing webhook with the id: ${hook.id} and the event name: ${state.webhookName}"
-                }
-           }
-
- }
- } catch (all) {log.debug "Couldn't delete webhook, moving on"}
-}
-
-void deleteAccessToken() {
-try{
-	def authEncoded = "${sparkUsername}:${sparkPassword}".bytes.encodeBase64()
-	def params = [
-    	uri: "https://api.spark.io/v1/access_tokens/${state.sparkToken}",
-    	headers: [
-        	'Authorization': "Basic ${authEncoded}"
-    	]
-	]
-
-	httpDelete(params) //uri:"https://${sparkUsername}:${sparkPassword}@api.spark.io/v1/access_tokens/${state.sparkToken}")
-	log.debug "Deleted the existing Spark Access Token"
- } catch (all) {log.debug "Couldn't delete Spark Token, moving on"}
-}
-
-void checkWebhook() {
-	int foundHook = 0
-	httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${state.sparkToken}",
-    ) {response -> response.data.each { 
-    		hook ->
-				//log.debug hook.event
-                if (hook.event == state.webhookName) {
-                	foundHook = 1
-                	log.debug "Found existing webhook id: ${hook.id}"
-                    
-                }
-           }
-    if (!foundHook) {
-    	createWebhook()
-    }
-    else {
-
-    }
- }        
-}
-
-void createWebhook() {
-	log.debug "Creating a Spark webhook "
-             
-      httpPost(uri: "https://api.spark.io/v1/webhooks",
-      			body: [access_token: state.sparkToken, 
-        		event: state.webhookName,
-                url: state.appURL, 
-                requestType: "GET", 
-                mydevices: true]
-      			) {response -> log.debug (response.data)}
-}
-
-void createSparkDevice() {
-	//def sparkDevice = addChildDevice("rhworkshop", "Spark Device Status", ddni(vt), null, [name:vt, label:label, completedSetup: true])
-}
-
-void configSpark() {
-    log.debug "Updating Spark config, the Spark device will now restart"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/config?access_token=${state.sparkToken}","",) {response -> log.debug (response.data)}
-}
-
+// got the webhook from the spark device update the ST device
 def setDeviceState() {
 	log.debug "Got webhook - pin: ${params.pin} data: ${params.data}"
 	
@@ -433,6 +307,7 @@ def setDeviceState() {
   //return [Respond: "OK"]
 }
 
+// Update the ST device based on what devicetype it is
 void changeDeviceState(device, sensorType) {
 log.debug "Pin: ${params.pin} State: ${params.data}"
 	switch(sensorType) {
@@ -495,4 +370,140 @@ log.debug "Pin: ${params.pin} State: ${params.data}"
        
     }
     
+}
+
+// -----------------------------------------------------------
+// Setup and config section
+// -----------------------------------------------------------
+
+// creates the config string to send to the spark device when requested
+def setupSensors() {
+	String configString = ""
+    def sensorTypesD = settings.findAll { it.key.startsWith("sensorTypeD") }
+    sensorTypesD.eachWithIndex { sType, i -> 
+    	if (sType.value == "none"){
+        	configString += "1,0,0,"
+        }
+        else {
+        	if (settings["resetD${i}"]) {
+	        	configString += settings["resetD${i}"].value
+                configString += ","
+            }
+            else {
+            	configString += "1,"
+            }
+            configString += sensorTypeLookup(sType) + ","
+            configString += (settings["instantD${i}"]) ? "1," : "0,"
+        }
+    }
+    def sensorTypesA = settings.findAll { it.key.startsWith("sensorTypeA") }
+    sensorTypesA.eachWithIndex { sType, i -> 
+    	if (sType.value == "none"){
+        	configString += "1,0,0,"
+        }
+        else {
+        	if (settings["resetA${i}"]) {
+	        	configString += settings["resetA${i}"].value
+                configString += ","
+            }
+            else {
+            	configString += "1,"
+            }
+            configString += sensorTypeLookup(sType) + ","
+            configString += (settings["instantA${i}"]) ? "1," : "0,"
+        }
+    }
+    configString = configString[0..-2]
+	state.configString = configString
+	subscribe(sensorA0, "switch.on", switchOnHandler)
+    subscribe(sensorA0, "switch.off", switchOffHandler)
+    subscribe(sensorA0, "switch.setLevel", switchValueHandler)
+    configSpark()
+}
+
+// still working on this part...
+def sensorTypeLookup(def sType) {
+	log.debug sType
+	return 1
+}
+
+// Check to see if we need to make the webhook or if it is there already
+void checkWebhook() {
+	int foundHook = 0
+	httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${state.sparkToken}",
+    ) {response -> response.data.each { 
+    		hook ->
+				//log.debug hook.event
+                if (hook.event == state.webhookName) {
+                	foundHook = 1
+                	log.debug "Found existing webhook id: ${hook.id}"                    
+                }
+           }
+    if (!foundHook) {
+    	createWebhook()
+    }
+    else {
+    }
+ }        
+}
+
+// Create a new spark webhook for this app to use
+void createWebhook() {
+	log.debug "Creating a Spark webhook "
+             
+      httpPost(uri: "https://api.spark.io/v1/webhooks",
+      			body: [access_token: state.sparkToken, 
+        		event: state.webhookName,
+                url: state.appURL, 
+                requestType: "GET", 
+                mydevices: true]
+      			) {response -> log.debug (response.data)}
+}
+
+// TODO: add option to create a spark device that reports status and wifi signal strength automatically
+void createSparkDevice() {
+	//def sparkDevice = addChildDevice("rhworkshop", "Spark Device Status", ddni(vt), null, [name:vt, label:label, completedSetup: true])
+}
+
+// Send the spark device a config updated command so it will reboot and pull the new config
+void configSpark() {
+    log.debug "Updating Spark config, the Spark device will now restart"
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/config?access_token=${state.sparkToken}","",) {response -> log.debug (response.data)}
+}
+
+// -----------------------------------------------------------
+// Uninstall Section
+// -----------------------------------------------------------
+
+// Cleanup on uninstall - remove the spark webhook for this app
+void deleteWebhook() {
+try{
+httpGet(uri:"https://api.spark.io/v1/webhooks?access_token=${state.sparkToken}",
+    ) {response -> response.data.each { 
+    		hook ->
+				//log.debug hook.event
+                if (hook.event == state.webhookName) {
+                	httpDelete(uri:"https://api.spark.io/v1/webhooks/${hook.id}?access_token=${state.sparkToken}")
+                    log.debug "Deleted the existing webhook with the id: ${hook.id} and the event name: ${state.webhookName}"
+                }
+           }
+
+ }
+ } catch (all) {log.debug "Couldn't delete webhook, moving on"}
+}
+
+// Cleanup on uninstall - remove the spark access token
+void deleteAccessToken() {
+try{
+	def authEncoded = "${sparkUsername}:${sparkPassword}".bytes.encodeBase64()
+	def params = [
+    	uri: "https://api.spark.io/v1/access_tokens/${state.sparkToken}",
+    	headers: [
+        	'Authorization': "Basic ${authEncoded}"
+    	]
+	]
+
+	httpDelete(params) //uri:"https://${sparkUsername}:${sparkPassword}@api.spark.io/v1/access_tokens/${state.sparkToken}")
+	log.debug "Deleted the existing Spark Access Token"
+ } catch (all) {log.debug "Couldn't delete Spark Token, moving on"}
 }
