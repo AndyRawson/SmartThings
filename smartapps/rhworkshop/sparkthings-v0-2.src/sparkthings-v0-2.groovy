@@ -6,6 +6,7 @@
  *  TODO: Not all device types are setup and tested yet
  *  TODO: support the Particle Photon 
  *  TODO: change all the Spark references to Particle
+ *  TODO: handle turning on an off pins
 */
 definition(
     name: "SparkThings V0.2",
@@ -117,10 +118,7 @@ def page2() {
                     input(name: "actuatorA${i}", type: "bool", title: "On for Actuator, Off for Sensor", defaultValue: false)
             	}
         	}
-		}
-
-
-        
+		}        
     }
 }
 
@@ -210,7 +208,7 @@ def installed() {
     state.appURL = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/stdata/${state.webhookName}/{{pin}}/{{data}}?access_token=${state.accessToken}"
 	//log.debug "Installed with settings: ${settings}"
     checkWebhook() 
-    setupSensors()
+    //setupSensors()
 }
 
 def updated() {
@@ -228,20 +226,24 @@ def uninstalled() {
 }
 
 
-
 def switchOnHandler(evt) {
+	evt.getProperties().each {e -> log.debug "${e}" }
     log.debug "switch turned on!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOn?access_token=${state.sparkToken}","command=D3",) {response -> log.debug (response.data)}
+    def pinToSet = "D0"
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOn?access_token=${state.sparkToken}","command=${pinToSet}",) {response -> log.debug (response.data)}
 }
 
 def switchOffHandler(evt) {
     log.debug "switch turned off!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOff?access_token=${state.sparkToken}","command=D3",) {response -> log.debug (response.data)}
+    def pinToSet = "D0"
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setOff?access_token=${state.sparkToken}","command=${pinToSet}",) {response -> log.debug (response.data)}
 }
 
 def switchValueHandler(evt) {
     log.debug "switch dimmed to ${evt.value}!"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setValue?access_token=${state.sparkToken}","command=D3:${evt.value}",) {response -> log.debug (response.data)}
+    def pinToSet = "D0"
+    def pinValue = "101"
+    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/setValue?access_token=${state.sparkToken}","command=${pinToSet}:${pinValue}",) {response -> log.debug (response.data)}
 }
 
 // got the webhook from the spark device update the ST device
@@ -415,9 +417,10 @@ def setupSensors() {
     }
     configString = configString[0..-2]
 	state.configString = configString
-	subscribe(sensorA0, "switch.on", switchOnHandler)
-    subscribe(sensorA0, "switch.off", switchOffHandler)
-    subscribe(sensorA0, "switch.setLevel", switchValueHandler)
+	//subscribe(sensorA0, "switch.on", switchOnHandler)
+    //subscribe(sensorA0, "switch.off", switchOffHandler)
+    //subscribe(sensorA0, "switch.setLevel", switchValueHandler)
+    subscribe(sensorA0, "momentary", switchValueHandler)
     configSpark()
 }
 
@@ -468,7 +471,9 @@ void createSparkDevice() {
 // Send the spark device a config updated command so it will reboot and pull the new config
 void configSpark() {
     log.debug "Updating Spark config, the Spark device will now restart"
-    httpPost("https://api.spark.io/v1/devices/${sparkDevice}/config?access_token=${state.sparkToken}","",) {response -> log.debug (response.data)}
+    try {
+    	httpPost("https://api.spark.io/v1/devices/${sparkDevice}/config?access_token=${state.sparkToken}","",) {response -> log.debug (response.data)}
+ 	} catch (all) {log.debug "Couldn't delete webhook, moving on"}
 }
 
 // -----------------------------------------------------------
