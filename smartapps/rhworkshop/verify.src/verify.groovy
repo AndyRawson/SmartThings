@@ -32,7 +32,7 @@ preferences {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-
+	
 	initialize()
 }
 
@@ -45,12 +45,74 @@ def updated() {
 
 def initialize() {
 	subscribe(switches, "switch", switchesHandler)
+    subscribe(location, "alarmSystemStatus", alarmHandler)
+    subscribe(location, "stream", alarmHandler)
+    subscribe(location, "activity", alarmHandler)
+    subscribe(location, "battery", alarmHandler)
+    log.debug "alarm state: ${location.currentState("alarmSystemStatus")?.value}"
+    //def loc = "location"
+    //location.smartApps.each {
+	//	loc += "$it"}
+    //log.debug "Location: ${loc}"
+    //subscribe(security, "intrusion", alarmHandler)
+    //this.each {
+	 //location.hubs.getProperties()
+    def s = "${this.state.getProperties()}"
+    def l = s.toList().collate( 300 )*.join()
+    l.each {log.debug "Location: ${it}"}
+    //}
+    //sendLocationEvent(name: "alarmSystemStatus", value: "off")
+    
+        //def incident = location.incidents[0]
+        //incident.close
+		//log.debug "${incident.getProperties()}"
+	
+    
+    
+}
+
+def doReflection(obj)  
+{    
+   def methods = obj.getProperties()  
+   def methodsNames = new StringBuilder()
+   methodsNames << "Reflection:"  
+   //methodsNames << "\tClass Name: ${obj.class.name}"
+   methods.each  
+   {  
+      methodsNames << "${it} " 
+   }  
+
+   methodsNames
+}  
+
+def alarmHandler(evt) {
+	log.debug "Verify Event name: ${evt.name}"
+	log.debug "Verify Event value: ${evt.value}"
 }
 
 def switchesHandler(evt) {
+	def d = evt.device
+    def val = evt.value
     if (evt.value == "on") {
-        log.debug "switch turned on!"
+        log.debug "${evt.device.hub.id} switch turned on."
     } else if (evt.value == "off") {
-        log.debug "switch turned off!"
+        log.debug "${d} switch turned off."
     }
+    
+    if (d.hasCommand("refresh")) {
+    	d.refresh()
+        log.debug "${d} switch refresh"
+        if (d.currentSwitch != val) {
+        	log.debug "${d} switch was not turned ${val}!"
+        } else {
+        	log.debug "${d} switch was verified ${val}"
+        }
+    } else if (d.hasCommand("poll")) {
+    	d.poll()
+        log.debug "${d} switch poll"
+    } else {log.debug "${d} doesn't have polling or refresh commands"}
+}
+
+def checkSwitch() {
+
 }
