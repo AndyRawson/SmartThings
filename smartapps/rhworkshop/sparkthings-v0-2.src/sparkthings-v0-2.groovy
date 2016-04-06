@@ -86,13 +86,23 @@ def page2() {
     dynamicPage(name: "page2") {
    
    if (!state.sparkToken){
-        httpPost(uri: "https://spark:spark@api.spark.io/oauth/token",
+   def clientAuth = "particle:particle"
+   clientAuth = "Basic " + clientAuth.encodeAsBase64().toString()
+   def params = [
+        headers: [Authorization: clientAuth],
+		uri: "https://api.particle.io/oauth/token",
 		body: [grant_type: "password", 
-        username: sparkUsername,
-        password: sparkPassword,
-        expires_in: "157680000"] 
-      		) {response -> state.sparkToken = response.data.access_token
+        	username: sparkUsername,
+        	password: sparkPassword] 
+        ]
+   try {
+        httpPost(params) {response -> 
+        	state.sparkToken = response.data.access_token
                	}
+	} catch (e) {
+        log.error "error: $e"
+        
+    }
         log.debug "Created new Spark.io token"        
         //log.debug "Spark Token ${state.sparkToken}"
         checkToken() 
