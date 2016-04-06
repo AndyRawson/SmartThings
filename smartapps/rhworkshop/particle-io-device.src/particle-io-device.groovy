@@ -29,34 +29,12 @@ page(name: "page3", title: "Pick Device", install: true, uninstall: false)
 def page2() {
    	dynamicPage(name: "page2") {
    		section("Generate Token") {
-	   	if (!state.particleToken){
-	   		def clientAuth = "particle:particle"
-	   		clientAuth = "Basic " + clientAuth.encodeAsBase64().toString()
-	   		def params = [
-	        	headers: [Authorization: clientAuth],
-				uri: "https://api.particle.io/oauth/token",
-				body: [grant_type: "password", 
-        			username: particleUsername,
-        			password: particlePassword
-                	] 
-	        ]
-	   		try {
-	        	httpPost(params) {response -> 
-    	    		state.particleToken = response.data.access_token
-        	       	}
-                log.debug "Created new Particle.io token"        
-	        	//log.debug "Particle Token ${state.particleToken}"
-	        	checkToken()
-                paragraph title: "Success logging in to Particle.io", "Auth Token generated"
-			} catch (e) {
-    	    	log.error "error: $e"
-                paragraph title: "Error logging in to Particle.io", "$e"
-        	}
- 
-		}
-        else {
-        	paragraph title: "Success logging in to Particle.io", "Auth Token generated"
-        }
+			if (loginToParticle()) {
+            	paragraph title: "Success logging in to Particle.io", "Auth Token generated"            
+            }
+            else {
+            	paragraph title: "Error logging in to Particle.io", "Check your username and password or check the log for other errors"
+            }
 		}
 	}
 }
@@ -90,6 +68,39 @@ def updated() {
     checkWebhook()
     //setupSensors()
 }
+
+// Log in to Particle.io
+def loginToParticle() {
+	   	if (!state.particleToken){
+	   		def clientAuth = "particle:particle"
+	   		clientAuth = "Basic " + clientAuth.encodeAsBase64().toString()
+	   		def params = [
+	        	headers: [Authorization: clientAuth],
+				uri: "https://api.particle.io/oauth/token",
+				body: [grant_type: "password", 
+        			username: particleUsername,
+        			password: particlePassword
+                	] 
+	        ]
+	   		try {
+	        	httpPost(params) {response -> 
+    	    		state.particleToken = response.data.access_token
+        	       	}
+                log.debug "Created new Particle.io token"        
+	        	//log.debug "Particle Token ${state.particleToken}"
+	        	checkToken()
+				return true
+			} catch (e) {
+    	    	log.error "error: $e"
+                return false
+        	}
+ 
+		}
+        else {
+        	return true
+        }
+}
+
 // Check to see if we need to make the webhook or if it is there already
 void checkWebhook() {
 	int foundHook = 0
@@ -242,15 +253,14 @@ httpGet(uri:"https://api.particle.io/v1/webhooks?access_token=${state.particleTo
 
 // Cleanup on uninstall - remove the particle access token
 void deleteAccessToken() {
-try{
-	def authEncoded = "${particleUsername}:${particlePassword}".bytes.encodeBase64()
-	def params = [
-    	uri: "https://api.particle.io/v1/access_tokens/${state.particleToken}",
-    	headers: [
-        	'Authorization': "Basic ${authEncoded}"
-    	]
-	]
+	try{
+    	def clientAuth = "${particleUsername}:${particlePassword}"
+	   	clientAuth = "Basic " + clientAuth.encodeAsBase64().toString()
+	   	def params = [
+	        headers: [Authorization: clientAuth],
+			uri: "https://api.particle.io/v1/access_tokens/${state.particleToken}"
+	        ]
 	httpDelete(params) //uri:"https://${particleUsername}:${particlePassword}@api.particle.io/v1/access_tokens/${state.particleToken}")
 	log.debug "Deleted the existing Particle Access Token"
- } catch (all) {log.debug "Couldn't delete Particle Token, moving on"}
+ } catch (e) {log.debug "Couldn't delete Particle Token, moving on: $e"}
 }
