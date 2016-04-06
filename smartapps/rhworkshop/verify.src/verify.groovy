@@ -27,6 +27,7 @@ definition(
 preferences {
 	section("Select devices to verify") {
 		input "switches", "capability.switch", multiple: true
+        //input "cow", "text"
 	}
 }
 
@@ -48,7 +49,7 @@ def initialize() {
     subscribe(location, "alarmSystemStatus", alarmHandler)
     subscribe(location, "stream", alarmHandler)
     subscribe(location, "activity", alarmHandler)
-    subscribe(location, "battery", alarmHandler)
+    subscribe(location, "battery", batteryHandler)
     log.debug "alarm state: ${location.currentState("alarmSystemStatus")?.value}"
     //def loc = "location"
     //location.smartApps.each {
@@ -57,17 +58,29 @@ def initialize() {
     //subscribe(security, "intrusion", alarmHandler)
     //this.each {
 	 //location.hubs.getProperties()
-    def s = "${this.state.getProperties()}"
+    def s = "${physicalgraph.group}"
     def l = s.toList().collate( 300 )*.join()
-    l.each {log.debug "Location: ${it}"}
+    l.each {log.debug "Verify: ${it}"}
+    log.debug "verify info: ${switches.device.groupId}"
     //}
     //sendLocationEvent(name: "alarmSystemStatus", value: "off")
     
         //def incident = location.incidents[0]
         //incident.close
 		//log.debug "${incident.getProperties()}"
-	
-    
+	/*
+    // try to find another app and change it's settings
+    location.helloHome.childApps.each {
+    	if (it.name == "Hub Offline Notification") {
+        	log.debug "Found the Hub Offline Notification app id ${it.id}"
+            log.debug "Settings: ${it.appSettings}"
+        }
+        if (it.name == "Low Battery Notification") {
+        	log.debug "Found the Low Battery Notification app id ${it.id}"
+            log.debug "Settings: ${it.appSettings}"
+        }
+    }
+    */
     
 }
 
@@ -84,6 +97,10 @@ def doReflection(obj)
 
    methodsNames
 }  
+
+def batteryHandler(evt) {
+    log.debug "Battery Event device: ${evt.device}, Battery Level: ${evt.value}"
+}
 
 def alarmHandler(evt) {
 	log.debug "Verify Event name: ${evt.name}"
