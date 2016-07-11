@@ -58,8 +58,8 @@ def initialize() {
     //subscribe(security, "intrusion", alarmHandler)
     //this.each {
 	 //location.hubs.getProperties()
-    def s = "${physicalgraph.group}"
-    def l = s.toList().collate( 300 )*.join()
+    def s = "${location.hubs[0].hub.getProperties()}"
+    def l = s.toList().collate( 350 )*.join()
     l.each {log.debug "Verify: ${it}"}
     log.debug "verify info: ${switches.device.groupId}"
     //}
